@@ -11,7 +11,7 @@ class SSAOConfig:
     kernel_size: int = 32
     noise_dim: int = 4
     radius: float = 0.1
-    intensity: float = 0.5
+    intensity: float = 1.0
     blur_depth_sigma: float = 4.0
     blur_normal_sigma: float = 32.0
 

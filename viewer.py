@@ -22,6 +22,7 @@ class Viewer(WindowConfig):
     window_size = (1280, 720)
     resource_dir = 'resources'
     vsync = True
+    use_ssao = False
 
     scene: Scene = None
 
@@ -145,8 +146,7 @@ class Viewer(WindowConfig):
         self.geometry_pass.render(self.gbuffer, self.model, view, proj, time)
 
         # ssao
-        use_ssao = not self.geometry_pass.use_ao_tex
-        if use_ssao:
+        if self.use_ssao:
             self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, view, proj)
             self.ssao_pass.blur(self.gbuffer.position, self.gbuffer.normal)
 
@@ -155,7 +155,7 @@ class Viewer(WindowConfig):
             self.gbuffer,
             self.ssao_pass.output_texture,
             eye,
-            use_ssao,
+            self.use_ssao,
             time,
             self.wnd.size,
         )

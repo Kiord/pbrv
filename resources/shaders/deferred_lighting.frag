@@ -153,23 +153,15 @@ void main()
     float NdotL = max(dot(N, L), 0.0);                
     vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL; 
 
-    // float ao = 1.0;
-    // if (u_use_ssao) {
-    //     ao = texture(u_ssao, v_uv).r;
-    // }
+    if (u_use_ssao) {
+        ao = texture(u_ssao, v_uv).r;
+    }
 
     vec3 ambient = vec3(0.005) * albedo * ao;
     vec3 color = ambient + Lo;
 	
     color = ExposureCorrect(color, 2.1, -0.8);
     color = ACESFilmicToneMapping(color);
-   
-    fragColor = vec4(color, 1.0);
-
-    // if (sin(u_time)> 0.0)
-    //     fragColor.rgb = vec3(texture(u_ssao, v_uv).r);
-    // else
-    //     fragColor.rgb = vec3(ao);
     
-    //fragColor.rgb = vec3(texture(u_ssao, v_uv).r);
+    fragColor = vec4(color, 1.0);
 }
