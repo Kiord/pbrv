@@ -71,7 +71,7 @@ class Viewer(WindowConfig):
         self.reload_shaders()
 
         # --- material textures (GL) ---
-        self._create_material_textures()
+        self._load_material_textures()
 
         self._drag_mode = None  # 'rotate' or 'pan'
         self._last_click_time = 0.0
@@ -106,7 +106,7 @@ class Viewer(WindowConfig):
     # -------------------------------------------------------------------------
     # Material textures
     # -------------------------------------------------------------------------
-    def _create_material_textures(self):
+    def _load_material_textures(self):
         mat = self.scene.material
 
         self.albedo_tex, self.use_albedo_tex = self._make_texture2d(mat.albedo_map, 3)
@@ -114,6 +114,16 @@ class Viewer(WindowConfig):
         self.roughness_tex, self.use_roughness_tex = self._make_texture2d(mat.roughness_map, 1)
         self.metalicness_tex, self.use_metalicness_tex = self._make_texture2d(mat.metalicness_map, 1)
         self.ao_tex, self.use_ao_tex = self._make_texture2d(mat.ambient_occlusion_map, 1)
+
+    def update_material_uniforms(self):
+        safe_set_uniform(self.geom_prog, 'u_use_albedo_map', self.use_albedo_tex)
+        safe_set_uniform(self.geom_prog, 'u_use_normal_map', self.use_normal_tex)
+        safe_set_uniform(self.geom_prog, 'u_use_roughness_map', self.use_roughness_tex)
+        safe_set_uniform(self.geom_prog, 'u_use_metalicness_map', self.use_metalicness_tex)
+        safe_set_uniform(self.geom_prog, 'u_use_ao_map', self.use_ao_tex)
+        safe_set_uniform(self.geom_prog, 'u_albedo', self.scene.material.albedo)
+        safe_set_uniform(self.geom_prog, 'u_roughness', self.scene.material.roughness)
+        safe_set_uniform(self.geom_prog, 'u_metalicness', self.scene.material.metalicness)
 
 
     def _make_texture2d(self, img: Optional[np.ndarray], channels:int=3) -> moderngl.Texture:
@@ -270,14 +280,7 @@ class Viewer(WindowConfig):
         self.metalicness_tex.use(location=TexUnit.METALICNESS_MAP)
         self.ao_tex.use(location=TexUnit.AO_MAP)
 
-        safe_set_uniform(self.geom_prog, 'u_use_albedo_map', self.use_albedo_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_normal_map', self.use_normal_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_roughness_map', self.use_roughness_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_metalicness_map', self.use_metalicness_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_ao_map', self.use_ao_tex)
-        safe_set_uniform(self.geom_prog, 'u_albedo', self.scene.material.albedo)
-        safe_set_uniform(self.geom_prog, 'u_roughness', self.scene.material.roughness)
-        safe_set_uniform(self.geom_prog, 'u_metalicness', self.scene.material.metalicness)
+        self.update_material_uniforms()
         safe_set_uniform(self.geom_prog, 'u_time', time)
 
         # draw mesh into G-buffer
@@ -309,15 +312,15 @@ class Viewer(WindowConfig):
 
 
 if __name__ == '__main__':
-    mesh = Mesh.from_path('resources/meshes/melon.obj')
+    mesh = Mesh.from_path('resources/meshes/lantern.obj')
 
     # Example: create a material with an albedo map
     material = Material.from_map_paths(
-        albedo_path='resources/textures/melon_a.jpg',
-        normal_path='resources/textures/melon_n.jpg',
-        #roughness_path='resources/textures/melon_r.jpg',
-        #metalicness_path='resources/textures/melon_m.jpg',
-        ambient_occlusion_path='resources/textures/melon_ao.jpg',
+        albedo_path='resources/textures/lantern_a.jpg',
+        normal_path='resources/textures/lantern_n.jpg',
+        roughness_path='resources/textures/lantern_r.jpg',
+        metalicness_path='resources/textures/lantern_m.jpg',
+        ambient_occlusion_path='resources/textures/lantern_ao.jpg',
     )
     material.roughness = 0.3
     material.metalicness = 0.0
