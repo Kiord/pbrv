@@ -150,18 +150,14 @@ class Viewer(WindowConfig):
 
 
 if __name__ == '__main__':
-    mesh = Mesh.from_path('resources/meshes/ship.obj')
-
-    # Example: create a material with an albedo map
+    mesh = Mesh.from_path('resources/meshes/lantern.obj')
     material = Material.from_map_paths(
-        albedo_path='resources/textures/ship_a.jpg',
-        normal_path='resources/textures/ship_n.jpg',
-        roughness_path='resources/textures/ship_r.jpg',
-        metalness_path='resources/textures/ship_m.jpg',
-        ambient_occlusion_path='resources/textures/ship_ao.jpg',
+        albedo_path='resources/textures/lantern_a.jpg',
+        normal_path='resources/textures/lantern_n.jpg',
+        roughness_path='resources/textures/lantern_r.jpg',
+        metalness_path='resources/textures/lantern_m.jpg',
+        ambient_occlusion_path='resources/textures/lantern_ao.jpg',
     )
-    material.roughness = 0.3
-    material.metalness = 0.0
 
     Viewer.scene = Scene(mesh=mesh, material=material)
     run_window_config(Viewer)
