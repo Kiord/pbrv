@@ -20,7 +20,7 @@ uniform sampler2D u_albedo_map;
 uniform bool u_use_albedo_map;
 
 uniform float u_roughness;
-uniform float u_metalicness;
+uniform float u_metalness;
 
 uniform sampler2D u_normal_map;
 uniform bool      u_use_normal_map;
@@ -28,8 +28,8 @@ uniform bool      u_use_normal_map;
 uniform sampler2D u_roughness_map;
 uniform bool      u_use_roughness_map;
 
-uniform sampler2D u_metalicness_map;
-uniform bool      u_use_metalicness_map;
+uniform sampler2D u_metalness_map;
+uniform bool      u_use_metalness_map;
 
 uniform sampler2D u_ao_map;
 uniform bool      u_use_ao_map;
@@ -63,15 +63,15 @@ void main() {
 
     // --- Roughness / metallic / AO packed into gRMAO ---
     float roughness   = u_roughness;
-    float metalicness = u_metalicness;
+    float metalness = u_metalness;
     float ao          = 1.0;
 
     if (u_use_roughness_map)
         roughness = texture(u_roughness_map, fs_in.uv).r;
-    if (u_use_metalicness_map)
-        metalicness = texture(u_metalicness_map, fs_in.uv).r;
+    if (u_use_metalness_map)
+        metalness = texture(u_metalness_map, fs_in.uv).r;
     if (u_use_ao_map)
         ao = texture(u_ao_map, fs_in.uv).r;
 
-    gRMAO = vec4(roughness, metalicness, ao, 1.0);
+    gRMAO = vec4(roughness, metalness, ao, 1.0);
 }

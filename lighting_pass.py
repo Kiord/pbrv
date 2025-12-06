@@ -1,0 +1,76 @@
+from dataclasses import dataclass
+from typing import Optional, Tuple
+
+import moderngl
+from moderngl import Context, Program, VertexArray, Texture
+import numpy as np
+
+from constants import TexUnit
+from utils import Pass, safe_set_uniform
+from gbuffer import GBuffer
+
+
+@dataclass
+class LightingConfig:
+    light_pos: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    light_color: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+
+class LightingPass(Pass):
+    def __init__(
+        self,
+        ctx: Context,
+        load_program_fn,
+        config: Optional[LightingConfig] = None,
+    ):
+        super().__init__(ctx, load_program_fn)
+        self.cfg = config or LightingConfig()
+
+        self.prog: Optional[Program] = None
+        self.vao: Optional[VertexArray] = None
+
+        self.reload_shaders()
+
+    def reload_shaders(self) -> None:
+        if isinstance(self.prog, Program):
+            self.prog.release()
+
+        self.prog = self.load_program_fn(
+            vertex_shader="shaders/deferred_lighting.vert",
+            fragment_shader="shaders/deferred_lighting.frag",
+        )
+        self.vao = self.ctx.vertex_array(self.prog, [])
+
+        safe_set_uniform(self.prog, "gPosition", TexUnit.GBUFFER_POSITION)
+        safe_set_uniform(self.prog, "gNormal", TexUnit.GBUFFER_NORMAL)
+        safe_set_uniform(self.prog, "gAlbedo", TexUnit.GBUFFER_ALBEDO)
+        safe_set_uniform(self.prog, "gRMAO", TexUnit.GBUFFER_RMAO)
+        safe_set_uniform(self.prog, "u_ssao", TexUnit.SSAO_BLUR)
+
+    def render(
+        self,
+        gbuffer: GBuffer,
+        ssao_tex: Texture,
+        eye_pos: np.ndarray,
+        use_ssao: bool,
+        time_value: float,
+        window_size: Tuple[int, int],
+    ) -> None:
+        self.ctx.screen.use()
+        w, h = window_size
+        self.ctx.viewport = (0, 0, w, h)
+        self.ctx.disable(moderngl.DEPTH_TEST)
+        self.ctx.clear(0.02, 0.02, 0.02, 1.0)
+
+        gbuffer.position.use(location=TexUnit.GBUFFER_POSITION)
+        gbuffer.normal.use(location=TexUnit.GBUFFER_NORMAL)
+        gbuffer.albedo.use(location=TexUnit.GBUFFER_ALBEDO)
+        gbuffer.rmao.use(location=TexUnit.GBUFFER_RMAO)
+        ssao_tex.use(location=TexUnit.SSAO_BLUR)
+
+        safe_set_uniform(self.prog, "u_use_ssao", bool(use_ssao))
+        safe_set_uniform(self.prog, "u_viewPos", tuple(eye_pos))
+        safe_set_uniform(self.prog, "u_lightPos", self.cfg.light_pos)
+        safe_set_uniform(self.prog, "u_lightColor", self.cfg.light_color)
+        safe_set_uniform(self.prog, "u_time", time_value)
+
+        self.vao.render(mode=moderngl.TRIANGLES, vertices=3)

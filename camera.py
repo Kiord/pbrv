@@ -1,4 +1,3 @@
-# camera.py
 import numpy as np
 from pyrr import matrix44, quaternion
 from trackball import Trackball
@@ -9,15 +8,6 @@ import math
 class TrackballCamera:
     """Camera controlled by a trackball.
     Usage:
-        cam = TrackballCamera(
-            distance=3.0,
-            target=[0, 0, 0],
-            fov_deg=60.0,
-            aspect=16/9,
-            near=0.1,
-            far=100.0,
-            ball_size=0.8,
-        )
 
         # on resize: cam.resize(width, height)
         # on mouse press:  cam.begin_rotate(x, y, width, height)
@@ -56,10 +46,8 @@ class TrackballCamera:
             self.fov_deg, aspect, self.near, self.far
         )
 
-        # Gavin Bell trackball controlling view orientation
         self.trackball = Trackball(ball_size=ball_size)
 
-    # ---------- window / projection ----------
 
     def resize(self, width: int, height: int):
         if height <= 0:
@@ -68,8 +56,6 @@ class TrackballCamera:
         self.projection = matrix44.create_perspective_projection(
             self.fov_deg, aspect, self.near, self.far
         )
-
-    # ---------- interaction wrappers ----------
 
     def begin_rotate(self, x: float, y: float, width: int, height: int):
         self.trackball.begin(x, y, width, height)
@@ -87,15 +73,11 @@ class TrackballCamera:
         self.pivot = new_pivot
 
     def zoom(self, delta: float):
-        """Positive delta zooms in (decrease distance), negative zooms out."""
         factor = 1 - self.zoom_speed * delta
         self.distance *= factor
         self.distance = max(self.min_distance, min(self.max_distance, self.distance))
 
-    # ---------- view matrix ----------
-
     def get_view(self):
-        """Return (view_matrix, eye_position)."""
         quat = self.trackball.get_quat()
 
         offset = -FRONT * self.distance  # vector from pivot to eye
@@ -139,8 +121,8 @@ class TrackballCamera:
         world_per_pixel_x = 0.5 * world_per_pixel_y * aspect
 
         pan_world = (
-            -right * dx * world_per_pixel_x   # screen +x => move pivot -right
-            + up * dy * world_per_pixel_y     # screen +y => move pivot +up
+            -right * dx * world_per_pixel_x 
+            + up * dy * world_per_pixel_y   
         )
         self.pivot += pan_world
 

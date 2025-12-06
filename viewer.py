@@ -14,6 +14,8 @@ from constants import EPSILON, TexUnit
 from utils import safe_set_uniform
 from ssao import SSAOPass, SSAOConfig
 from gbuffer import GBuffer
+from geometry_pass import GeometryPass
+from lighting_pass import LightingPass
 
 class Viewer(WindowConfig):
     title = "pbrv"
@@ -54,100 +56,26 @@ class Viewer(WindowConfig):
         self.vbo = self.ctx.buffer(data.tobytes())
         self.ibo = self.ctx.buffer(mesh.faces.astype("i4").tobytes())
 
-        # --- Frame buffers ---
+        # --- Passes ---
         self.gbuffer = GBuffer(self.ctx, *self.window_size)
+
+        self.geometry_pass = GeometryPass(
+            self.ctx,
+            self.load_program,
+            self.scene,
+            self.vbo   ,
+            self.ibo,
+        )
 
         self.ssao_pass = SSAOPass(self.ctx, self.load_program)
 
-
-        self.geom_prog = None
-        self.light_prog = None
-        self.reload_shaders()
-
-        # --- material textures (GL) ---
-        self._load_material_textures()
+        self.lighting_pass = LightingPass(self.ctx, self.load_program)
 
 
     def reload_shaders(self):
-        
-        if isinstance(self.geom_prog, moderngl.Program):
-            self.geom_prog.release()
-        if isinstance(self.light_prog, moderngl.Program):
-            self.light_prog.release()
-        self.geom_prog = self.load_program(
-            vertex_shader='shaders/gbuffer.vert',
-            fragment_shader='shaders/gbuffer.frag',
-        )
-        self.light_prog = self.load_program(
-            vertex_shader='shaders/deferred_lighting.vert',
-            fragment_shader='shaders/deferred_lighting.frag',
-        )
-
-        self._setup_material_samplers()
-        self.update_vaos()
-    
-    def update_vaos(self):
-        self.geometry_vao = self.ctx.vertex_array(
-        self.geom_prog,
-            [( self.vbo, "3f 3f 2f 3f", "in_position", "in_normal", "in_uv", "in_tangent")],
-            self.ibo,
-        )
-        self.screen_vao   = self.ctx.vertex_array(self.light_prog, [])
-
-    # -------------------------------------------------------------------------
-    # Material textures
-    # -------------------------------------------------------------------------
-    def _load_material_textures(self):
-        mat = self.scene.material
-
-        self.albedo_tex, self.use_albedo_tex = self._make_texture2d(mat.albedo_map, 3)
-        self.normal_tex, self.use_normal_tex = self._make_texture2d(mat.normal_map, 3)
-        self.roughness_tex, self.use_roughness_tex = self._make_texture2d(mat.roughness_map, 1)
-        self.metalicness_tex, self.use_metalicness_tex = self._make_texture2d(mat.metalicness_map, 1)
-        self.ao_tex, self.use_ao_tex = self._make_texture2d(mat.ambient_occlusion_map, 1)
-
-    def update_material_uniforms(self):
-        safe_set_uniform(self.geom_prog, 'u_use_albedo_map', self.use_albedo_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_normal_map', self.use_normal_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_roughness_map', self.use_roughness_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_metalicness_map', self.use_metalicness_tex)
-        safe_set_uniform(self.geom_prog, 'u_use_ao_map', self.use_ao_tex)
-        safe_set_uniform(self.geom_prog, 'u_albedo', self.scene.material.albedo)
-        safe_set_uniform(self.geom_prog, 'u_roughness', self.scene.material.roughness)
-        safe_set_uniform(self.geom_prog, 'u_metalicness', self.scene.material.metalicness)
-
-
-    def _make_texture2d(self, img: Optional[np.ndarray], channels:int=3) -> moderngl.Texture:
-        to_use = img is not None
-        if img is None:
-            img = np.ones((1, 1, channels), dtype="f4")
-        else:
-            img = np.ascontiguousarray(img.astype('f4'))
-        h, w = img.shape[:2]
-
-        if img.ndim == 2:
-            components = 1
-        else:
-            components = img.shape[2]
-
-        tex = self.ctx.texture(
-            (w, h),
-            components=components,
-            data=img.tobytes(),
-            dtype='f4',
-        )
-        tex.build_mipmaps()
-        tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
-        tex.repeat_x = True
-        tex.repeat_y = True
-        return tex, to_use
-
-    def _setup_material_samplers(self):
-        safe_set_uniform(self.geom_prog, 'u_albedo_map', TexUnit.ALBEDO_MAP)
-        safe_set_uniform(self.geom_prog, 'u_normal_map', TexUnit.NORMAL_MAP)
-        safe_set_uniform(self.geom_prog, 'u_roughness_map', TexUnit.ROUGHNESS_MAP)
-        safe_set_uniform(self.geom_prog, 'u_metalicness_map', TexUnit.METALICNESS_MAP)
-        safe_set_uniform(self.geom_prog, 'u_ao_map', TexUnit.AO_MAP)
+        self.geometry_pass.reload_shaders()
+        self.ssao_pass.reload_shaders()
+        self.lighting_pass.reload_shaders()
 
     # -------------------------------------------------------------------------
     # Mesh / GBuffer
@@ -206,70 +134,31 @@ class Viewer(WindowConfig):
         if key == self.wnd.keys.F5 and action == self.wnd.keys.ACTION_PRESS:
             self.reload_shaders()
     
-
-    
     # -------------------------------------------------------------------------
     # Render
     # -------------------------------------------------------------------------
     def on_render(self, time: float, frame_time: float):
-        # ---------- GEOMETRY PASS: fill G-buffer ----------
-        self.gbuffer.fbo.use()
-        self.ctx.viewport = (0, 0, self.gbuffer.width, self.gbuffer.height)
-        self.ctx.enable(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
-        self.ctx.clear(0.0, 0.0, 0.0, 1.0)
-
         view, eye, _ = self.camera.get_view()
+        proj = self.camera.projection
 
-        self.geom_prog['u_model'].write(np.array(self.model, dtype='f4').tobytes())
-        self.geom_prog['u_view'].write(np.array(view, dtype='f4').tobytes())
-        self.geom_prog['u_projection'].write(self.camera.projection.astype('f4').tobytes())
-        normal_matrix = np.linalg.inv(self.model).T[:3,  :3]
-        self.geom_prog['u_normal_matrix'].write(np.array(normal_matrix, dtype='f4').tobytes())
+        # geometry
+        self.geometry_pass.render(self.gbuffer, self.model, view, proj, time)
 
-        # Bind material textures (even if shader doesn't use them, it's fine)
-        self.albedo_tex.use(location=TexUnit.ALBEDO_MAP)
-        self.normal_tex.use(location=TexUnit.NORMAL_MAP)
-        self.roughness_tex.use(location=TexUnit.ROUGHNESS_MAP)
-        self.metalicness_tex.use(location=TexUnit.METALICNESS_MAP)
-        self.ao_tex.use(location=TexUnit.AO_MAP)
+        # ssao
+        use_ssao = not self.geometry_pass.use_ao_tex
+        if use_ssao:
+            self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, view, proj)
+            self.ssao_pass.blur(self.gbuffer.position, self.gbuffer.normal)
 
-        self.update_material_uniforms()
-        safe_set_uniform(self.geom_prog, 'u_time', time)
-
-        # draw mesh into G-buffer
-        self.geometry_vao.render()
-
-
-        # ---------- SSAO (half-res) ----------
-        self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, view, self.camera.projection)
-        self.ssao_pass.blur(self.gbuffer.position, self.gbuffer.normal)
-
-        # ---------- LIGHTING PASS: shade full screen ----------
-        self.ctx.screen.use()
-        w, h = self.wnd.size
-        self.ctx.viewport = (0, 0, w, h)
-        self.ctx.disable(moderngl.DEPTH_TEST)
-        self.ctx.clear(0.02, 0.02, 0.02, 1.0)
-
-        # bind G-buffer textures to texture units 0,1,2
-        self.gbuffer.position.use(location=TexUnit.GBUFFER_POSITION)
-        self.gbuffer.normal.use(location=TexUnit.GBUFFER_NORMAL)
-        self.gbuffer.albedo.use(location=TexUnit.GBUFFER_ALBEDO)
-        self.gbuffer.rmao.use(location=TexUnit.GBUFFER_RMAO)
-        self.ssao_pass.output_texture.use(location=TexUnit.SSAO_BLUR)
-
-        safe_set_uniform(self.light_prog, 'gPosition'  , TexUnit.GBUFFER_POSITION)
-        safe_set_uniform(self.light_prog, 'gNormal'    , TexUnit.GBUFFER_NORMAL)
-        safe_set_uniform(self.light_prog, 'gAlbedo'    , TexUnit.GBUFFER_ALBEDO)
-        safe_set_uniform(self.light_prog, 'gRMAO'      , TexUnit.GBUFFER_RMAO)
-        safe_set_uniform(self.light_prog, 'u_ssao'     , TexUnit.SSAO_BLUR)
-        safe_set_uniform(self.light_prog, 'u_use_ssao' , not self.use_ao_tex)
-        safe_set_uniform(self.light_prog, 'u_viewPos' , tuple(eye))
-        safe_set_uniform(self.light_prog, 'u_lightPos', (1.0, 1.0, 1.0))
-        safe_set_uniform(self.light_prog, 'u_lightColor', (1.0, 1.0, 1.0))
-        safe_set_uniform(self.light_prog, 'u_time', time)
-
-        self.screen_vao.render(mode=moderngl.TRIANGLES, vertices=3)
+        # lighting
+        self.lighting_pass.render(
+            self.gbuffer,
+            self.ssao_pass.output_texture,
+            eye,
+            use_ssao,
+            time,
+            self.wnd.size,
+        )
 
 
 if __name__ == '__main__':
@@ -280,11 +169,11 @@ if __name__ == '__main__':
         albedo_path='resources/textures/ship_a.jpg',
         normal_path='resources/textures/ship_n.jpg',
         roughness_path='resources/textures/ship_r.jpg',
-        metalicness_path='resources/textures/ship_m.jpg',
+        metalness_path='resources/textures/ship_m.jpg',
         ambient_occlusion_path='resources/textures/ship_ao.jpg',
     )
     material.roughness = 0.3
-    material.metalicness = 0.0
+    material.metalness = 0.0
 
     Viewer.scene = Scene(mesh=mesh, material=material)
     run_window_config(Viewer)

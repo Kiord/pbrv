@@ -17,5 +17,5 @@ class TexUnit:
     ALBEDO_MAP       = 7
     NORMAL_MAP       = 8 
     ROUGHNESS_MAP    = 9
-    METALICNESS_MAP  = 10
+    METALNESS_MAP  = 10
     AO_MAP           = 11

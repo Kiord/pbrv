@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import moderngl
+from moderngl import Program
 import numpy as np
 from constants import EPSILON, TexUnit
 from typing import Callable, Optional
@@ -23,7 +24,9 @@ class SSAOPass(Pass):
 
         self.cfg = config 
         self._init_kernel_and_noise()
-        self._load_programs()
+        self.prog:Optional[Program] = None
+        self.blur_prog:Optional[Program] = None
+        self.reload_shaders()
         self.vao      = self.ctx.vertex_array(self.prog, [])
         self.blur_vao = self.ctx.vertex_array(self.blur_prog, [])
 
@@ -41,7 +44,11 @@ class SSAOPass(Pass):
         self.blur_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
         self.blur_fbo = self.ctx.framebuffer(color_attachments=[self.blur_tex])
 
-    def _load_programs(self):
+    def reload_shaders(self):
+        if isinstance(self.prog, Program):
+            self.prog.release()
+        if isinstance(self.blur_prog, Program):
+            self.blur_prog.release()
         self.prog = self.load_program_fn(
             vertex_shader='shaders/deferred_lighting.vert',
             fragment_shader='shaders/ssao.frag',

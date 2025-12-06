@@ -75,8 +75,8 @@ class GBuffer:
         raw = self.fbo.read(
             viewport=(ix, iy, 1, 1),
             components=4,
-            attachment=0,  # position is color attachment 0
-            dtype="f2",    # half-floats
+            attachment=0,  # position
+            dtype="f2",    
             alignment=1,
         )
 

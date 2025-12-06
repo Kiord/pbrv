@@ -171,5 +171,5 @@ void main()
     // else
     //     fragColor.rgb = vec3(ao);
     
-    // fragColor.rgb = vec3(texture(u_ssao, v_uv).r);
+    //fragColor.rgb = vec3(texture(u_ssao, v_uv).r);
 }
