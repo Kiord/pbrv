@@ -3,7 +3,7 @@ import moderngl
 import numpy as np
 from constants import EPSILON, TexUnit
 from typing import Callable, Optional
-from utils import safe_set_uniform
+from utils import safe_set_uniform, Pass
 
 @dataclass
 class SSAOConfig:
@@ -14,11 +14,6 @@ class SSAOConfig:
     blur_depth_sigma: float = 4.0
     blur_normal_sigma: float = 32.0
 
-
-class Pass:
-    def __init__(self, ctx: moderngl.Context, load_program_fn:Callable):
-        self.ctx = ctx
-        self.load_program_fn = load_program_fn
 
 class SSAOPass(Pass):
     def __init__(self, ctx: moderngl.Context, load_program_fn:Callable, config: Optional[SSAOConfig]=None):
@@ -47,15 +42,14 @@ class SSAOPass(Pass):
         self.blur_fbo = self.ctx.framebuffer(color_attachments=[self.blur_tex])
 
     def _load_programs(self):
-        self.prog:moderngl.Program = self.load_program_fn(
+        self.prog = self.load_program_fn(
             vertex_shader='shaders/deferred_lighting.vert',
             fragment_shader='shaders/ssao.frag',
         )
-        self.blur_prog:moderngl.Program = self.load_program_fn(
+        self.blur_prog = self.load_program_fn(
             vertex_shader='shaders/deferred_lighting.vert',
             fragment_shader='shaders/ssao_blur.frag',
         )
-
 
     def render(self, g_position:moderngl.Texture, g_normal:moderngl.Texture, view, proj):
         # half-res viewport

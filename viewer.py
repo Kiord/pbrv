@@ -13,7 +13,7 @@ from scene import Scene, Mesh, Material
 from constants import EPSILON, TexUnit
 from utils import safe_set_uniform
 from ssao import SSAOPass, SSAOConfig
-
+from gbuffer import GBuffer
 
 class Viewer(WindowConfig):
     title = "pbrv"
@@ -55,7 +55,7 @@ class Viewer(WindowConfig):
         self.ibo = self.ctx.buffer(mesh.faces.astype("i4").tobytes())
 
         # --- Frame buffers ---
-        self.reallocate_framebuffers(*self.window_size)
+        self.gbuffer = GBuffer(self.ctx, *self.window_size)
 
         self.ssao_pass = SSAOPass(self.ctx, self.load_program)
 
@@ -152,54 +152,13 @@ class Viewer(WindowConfig):
     # -------------------------------------------------------------------------
     # Mesh / GBuffer
     # -------------------------------------------------------------------------
-       
-    def reallocate_framebuffers(self, width, height):
-        self.g_position = self.ctx.texture((width, height), 4, dtype='f2')
-        self.g_normal   = self.ctx.texture((width, height), 4, dtype='f2')
-        self.g_albedo   = self.ctx.texture((width, height), 4, dtype='f1')
-        self.g_rmao     = self.ctx.texture((width, height), 4, dtype='f1')
-        self.g_depth    = self.ctx.depth_texture((width, height))
-
-        self.g_fbo = self.ctx.framebuffer(
-            color_attachments=[self.g_position, self.g_normal, self.g_albedo, self.g_rmao],
-            depth_attachment=self.g_depth,
-        )
 
 
     def on_resize(self, width: int, height: int):   
         self.ctx.viewport = (0, 0, width, height)
         self.camera.resize(width, height)
-        self.reallocate_framebuffers(width, height)
+        self.gbuffer.resize(width, height)
         self.ssao_pass.resize(width, height)
-
-    def _sample_gbuffer_position(self, x, y):
-        w, h = self.wnd.size
-
-        ix = int(x)
-        iy = int(h - 1 - int(y))
-
-        ix = max(0, min(w - 1, ix))
-        iy = max(0, min(h - 1, iy))
-
-        raw = self.g_fbo.read(
-            viewport=(ix, iy, 1, 1),
-            components=4,
-            attachment=0,
-            dtype='f2',
-            alignment=1,
-        )
-
-        pos = np.frombuffer(raw, dtype=np.float16)
-
-        if pos.size < 3:
-            return None
-
-        world_pos = pos[:3].astype(np.float32)
-
-        if np.allclose(world_pos, 0.0, atol=1e-6):
-            return None
-
-        return world_pos
 
     # -------------------------------------------------------------------------
     # Mouse / camera
@@ -212,7 +171,7 @@ class Viewer(WindowConfig):
             is_double = dt <= self._double_click_max_delay
 
             if is_double:
-                picked_pos = self._sample_gbuffer_position(x, y)
+                picked_pos = self.gbuffer.sample_world_position(x, y)
                 if picked_pos is not None:
                     self.camera.set_pivot(picked_pos)
                     self.os_mouse.center()
@@ -249,14 +208,13 @@ class Viewer(WindowConfig):
     
 
     
-
     # -------------------------------------------------------------------------
     # Render
     # -------------------------------------------------------------------------
     def on_render(self, time: float, frame_time: float):
         # ---------- GEOMETRY PASS: fill G-buffer ----------
-        self.g_fbo.use()
-        self.ctx.viewport = (0, 0, self.g_position.width, self.g_position.height)
+        self.gbuffer.fbo.use()
+        self.ctx.viewport = (0, 0, self.gbuffer.width, self.gbuffer.height)
         self.ctx.enable(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
         self.ctx.clear(0.0, 0.0, 0.0, 1.0)
 
@@ -283,8 +241,8 @@ class Viewer(WindowConfig):
 
 
         # ---------- SSAO (half-res) ----------
-        self.ssao_pass.render(self.g_position, self.g_normal, view, self.camera.projection)
-        self.ssao_pass.blur(self.g_position, self.g_normal)
+        self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, view, self.camera.projection)
+        self.ssao_pass.blur(self.gbuffer.position, self.gbuffer.normal)
 
         # ---------- LIGHTING PASS: shade full screen ----------
         self.ctx.screen.use()
@@ -294,10 +252,10 @@ class Viewer(WindowConfig):
         self.ctx.clear(0.02, 0.02, 0.02, 1.0)
 
         # bind G-buffer textures to texture units 0,1,2
-        self.g_position.use(location=TexUnit.GBUFFER_POSITION)
-        self.g_normal.use(location=TexUnit.GBUFFER_NORMAL)
-        self.g_albedo.use(location=TexUnit.GBUFFER_ALBEDO)
-        self.g_rmao.use(location=TexUnit.GBUFFER_RMAO)
+        self.gbuffer.position.use(location=TexUnit.GBUFFER_POSITION)
+        self.gbuffer.normal.use(location=TexUnit.GBUFFER_NORMAL)
+        self.gbuffer.albedo.use(location=TexUnit.GBUFFER_ALBEDO)
+        self.gbuffer.rmao.use(location=TexUnit.GBUFFER_RMAO)
         self.ssao_pass.output_texture.use(location=TexUnit.SSAO_BLUR)
 
         safe_set_uniform(self.light_prog, 'gPosition'  , TexUnit.GBUFFER_POSITION)
@@ -315,15 +273,15 @@ class Viewer(WindowConfig):
 
 
 if __name__ == '__main__':
-    mesh = Mesh.from_path('resources/meshes/lantern.obj')
+    mesh = Mesh.from_path('resources/meshes/ship.obj')
 
     # Example: create a material with an albedo map
     material = Material.from_map_paths(
-        albedo_path='resources/textures/lantern_a.jpg',
-        normal_path='resources/textures/lantern_n.jpg',
-        roughness_path='resources/textures/lantern_r.jpg',
-        metalicness_path='resources/textures/lantern_m.jpg',
-        ambient_occlusion_path='resources/textures/lantern_ao.jpg',
+        albedo_path='resources/textures/ship_a.jpg',
+        normal_path='resources/textures/ship_n.jpg',
+        roughness_path='resources/textures/ship_r.jpg',
+        metalicness_path='resources/textures/ship_m.jpg',
+        ambient_occlusion_path='resources/textures/ship_ao.jpg',
     )
     material.roughness = 0.3
     material.metalicness = 0.0
