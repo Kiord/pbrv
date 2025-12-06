@@ -16,7 +16,7 @@ from ssao import SSAOPass, SSAOConfig
 
 
 class Viewer(WindowConfig):
-    title = "3D Viewer"
+    title = "pbrv"
     window_size = (1280, 720)
     resource_dir = 'resources'
     vsync = True
@@ -25,6 +25,7 @@ class Viewer(WindowConfig):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.wnd.set_icon('icons/moderngl.webp')
 
         if self.wnd.name == 'headless':
             print('ERROR: headless mode not supported. Exiting.')
