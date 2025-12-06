@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import trimesh
-from typing import Optional, Any
+from typing import Optional
 
 import moderngl
 from moderngl_window import WindowConfig, run_window_config, find_window_classes
@@ -10,28 +10,9 @@ from camera import TrackballCamera
 from mouse import OSMouse
 import time
 from scene import Scene, Mesh, Material
-from constants import EPSILON
-
-def safe_set_uniform(prog, name: str, value: Any):
-    if name in prog:
-        prog[name].value = value
-
-
-class TexUnit:
-    GBUFFER_POSITION = 0
-    GBUFFER_NORMAL   = 1
-    GBUFFER_ALBEDO   = 2
-    GBUFFER_RMAO     = 3
-
-    SSAO_NOISE       = 4
-    SSAO             = 5
-    SSAO_BLUR        = 6
-
-    ALBEDO_MAP       = 7
-    NORMAL_MAP       = 8 
-    ROUGHNESS_MAP    = 9
-    METALICNESS_MAP  = 10
-    AO_MAP           = 11
+from constants import EPSILON, TexUnit
+from utils import safe_set_uniform
+from ssao import SSAOPass, SSAOConfig
 
 
 class Viewer(WindowConfig):
@@ -41,13 +22,6 @@ class Viewer(WindowConfig):
     vsync = True
 
     scene: Scene = None
-
-    ssao_kernel_size = 32
-    ssao_noise_dim = 4
-    ssao_radius = 0.1   
-    ssao_intensity = 0.5
-    ssao_blur_depth_sigma = 4.0
-    ssao_blur_normal_sigma = 32.0
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -81,7 +55,9 @@ class Viewer(WindowConfig):
 
         # --- Frame buffers ---
         self.reallocate_framebuffers(*self.window_size)
-        self._init_ssao()
+
+        self.ssao_pass = SSAOPass(self.ctx, self.load_program)
+
 
         self.geom_prog = None
         self.light_prog = None
@@ -90,36 +66,6 @@ class Viewer(WindowConfig):
         # --- material textures (GL) ---
         self._load_material_textures()
 
-
-
-    
-    def _init_ssao(self):
-
-        samples = np.empty((self.ssao_kernel_size, 3), dtype=np.float32)
-        samples[:, :2] = np.random.uniform(-1.0, 1.0, size=(self.ssao_kernel_size, 2))
-        samples[:, 2] = np.random.uniform(0.0, 1.0, size=(self.ssao_kernel_size,))
-
-        norms = np.linalg.norm(samples, axis=1, keepdims=True)
-        norms[norms < EPSILON] = 1.0
-        samples = samples / norms
-
-        scale = np.linspace(0, 1, self.ssao_kernel_size, dtype=np.float32)
-        scale = 0.1 + 0.9 * (scale * scale)  # bias towards the center
-        self.ssao_kernel = samples * scale[:, None]
-
-        noise_hw = (self.ssao_noise_dim, self.ssao_noise_dim)
-        noise = np.zeros((*noise_hw , 3), dtype=np.float32)
-        noise[:, :, :2] = np.random.uniform(-1.0, 1.0, size=(*noise_hw, 2))
-
-        self.ssao_noise_tex = self.ctx.texture(
-            noise_hw,
-            components=3,
-            data=noise.astype('f4').tobytes(),
-            dtype='f4',
-        )
-        self.ssao_noise_tex.repeat_x = True
-        self.ssao_noise_tex.repeat_y = True
-        self.ssao_noise_tex.filter = (moderngl.NEAREST, moderngl.NEAREST)
 
     def reload_shaders(self):
         
@@ -135,14 +81,6 @@ class Viewer(WindowConfig):
             vertex_shader='shaders/deferred_lighting.vert',
             fragment_shader='shaders/deferred_lighting.frag',
         )
-        self.ssao_prog = self.load_program(
-            vertex_shader='shaders/deferred_lighting.vert',
-            fragment_shader='shaders/ssao.frag',
-        )
-        self.ssao_blur_prog = self.load_program(
-            vertex_shader='shaders/deferred_lighting.vert',
-            fragment_shader='shaders/ssao_blur.frag',
-        )
 
         self._setup_material_samplers()
         self.update_vaos()
@@ -154,8 +92,6 @@ class Viewer(WindowConfig):
             self.ibo,
         )
         self.screen_vao   = self.ctx.vertex_array(self.light_prog, [])
-        self.ssao_vao      = self.ctx.vertex_array(self.ssao_prog, [])
-        self.ssao_blur_vao = self.ctx.vertex_array(self.ssao_blur_prog, [])
 
     # -------------------------------------------------------------------------
     # Material textures
@@ -228,23 +164,12 @@ class Viewer(WindowConfig):
             depth_attachment=self.g_depth,
         )
 
-        half_w = max(1, width // 2)
-        half_h = max(1, height // 2)
-
-        # raw SSAO
-        self.ssao_tex = self.ctx.texture((half_w, half_h), 1, dtype='f1')
-        self.ssao_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        self.ssao_fbo = self.ctx.framebuffer(color_attachments=[self.ssao_tex])
-
-        # blurred SSAO
-        self.ssao_blur_tex = self.ctx.texture((half_w, half_h), 1, dtype='f1')
-        self.ssao_blur_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        self.ssao_blur_fbo = self.ctx.framebuffer(color_attachments=[self.ssao_blur_tex])
 
     def on_resize(self, width: int, height: int):   
         self.ctx.viewport = (0, 0, width, height)
         self.camera.resize(width, height)
         self.reallocate_framebuffers(width, height)
+        self.ssao_pass.resize(width, height)
 
     def _sample_gbuffer_position(self, x, y):
         w, h = self.wnd.size
@@ -357,8 +282,8 @@ class Viewer(WindowConfig):
 
 
         # ---------- SSAO (half-res) ----------
-        self._render_ssao(view, self.camera.projection)
-        self._blur_ssao()
+        self.ssao_pass.render(self.g_position, self.g_normal, view, self.camera.projection)
+        self.ssao_pass.blur(self.g_position, self.g_normal)
 
         # ---------- LIGHTING PASS: shade full screen ----------
         self.ctx.screen.use()
@@ -372,7 +297,7 @@ class Viewer(WindowConfig):
         self.g_normal.use(location=TexUnit.GBUFFER_NORMAL)
         self.g_albedo.use(location=TexUnit.GBUFFER_ALBEDO)
         self.g_rmao.use(location=TexUnit.GBUFFER_RMAO)
-        self.ssao_blur_tex.use(location=TexUnit.SSAO_BLUR)
+        self.ssao_pass.output_texture.use(location=TexUnit.SSAO_BLUR)
 
         safe_set_uniform(self.light_prog, 'gPosition'  , TexUnit.GBUFFER_POSITION)
         safe_set_uniform(self.light_prog, 'gNormal'    , TexUnit.GBUFFER_NORMAL)
@@ -387,63 +312,6 @@ class Viewer(WindowConfig):
 
         self.screen_vao.render(mode=moderngl.TRIANGLES, vertices=3)
 
-    def _render_ssao(self, view_mat, proj_mat):
-        # half-res viewport
-        w, h = self.ssao_tex.size
-        self.ssao_fbo.use()
-        self.ctx.viewport = (0, 0, w, h)
-        self.ctx.disable(moderngl.DEPTH_TEST)
-        self.ctx.clear(1.0, 1.0, 1.0, 1.0)  # AO=1 (no occlusion) base
-
-        # G-buffer (full res) as input
-        self.g_position.use(location=TexUnit.GBUFFER_POSITION)
-        self.g_normal.use(location=TexUnit.GBUFFER_NORMAL)
-        self.ssao_noise_tex.use(location=TexUnit.SSAO_NOISE)
-
-        safe_set_uniform(self.ssao_prog, 'gPosition', TexUnit.GBUFFER_POSITION)
-        safe_set_uniform(self.ssao_prog, 'gNormal', TexUnit.GBUFFER_NORMAL) 
-        safe_set_uniform(self.ssao_prog, 'u_ssao_noise', TexUnit.SSAO_NOISE)
-
-        # matrices
-        self.ssao_prog['u_view'].write(np.asarray(view_mat, dtype='f4').tobytes())
-        self.ssao_prog['u_projection'].write(np.asarray(proj_mat, dtype='f4').tobytes())
-
-        # noise scale in uv space: (half-res screen / noise texture size)
-        noise_scale = (
-            w / float(self.ssao_noise_dim),
-            h / float(self.ssao_noise_dim),
-        )
-
-        safe_set_uniform(self.ssao_prog, 'u_ssao_noise_scale',  noise_scale)
-        safe_set_uniform(self.ssao_prog, 'u_ssao_radius',       self.ssao_radius)
-        safe_set_uniform(self.ssao_prog, 'u_ssao_sample_count', self.ssao_kernel_size)
-        safe_set_uniform(self.ssao_prog, 'u_ssao_intensity',    self.ssao_intensity)
-
-        # upload kernel array
-        self.ssao_prog['u_ssao_samples'].write(self.ssao_kernel.astype('f4').tobytes())
-
-        self.ssao_vao.render(mode=moderngl.TRIANGLES, vertices=3)
-
-    def _blur_ssao(self):
-        w, h = self.ssao_blur_tex.size
-        self.ssao_blur_fbo.use()
-        self.ctx.viewport = (0, 0, w, h)
-        self.ctx.disable(moderngl.DEPTH_TEST)
-        self.ctx.clear(1.0, 1.0, 1.0, 1.0)
-
-        # raw SSAO as input, full-res G-buffer for edge awareness
-        self.ssao_tex.use(location=TexUnit.SSAO)
-        self.g_position.use(location=TexUnit.GBUFFER_POSITION)
-        self.g_normal.use(location=TexUnit.GBUFFER_NORMAL)
-
-        safe_set_uniform(self.ssao_blur_prog, 'u_ssao',    TexUnit.SSAO)
-        safe_set_uniform(self.ssao_blur_prog, 'gPosition', TexUnit.GBUFFER_POSITION)
-        safe_set_uniform(self.ssao_blur_prog, 'gNormal',   TexUnit.GBUFFER_NORMAL)
-
-        safe_set_uniform(self.ssao_blur_prog, 'u_blur_depth_sigma',  self.ssao_blur_depth_sigma)
-        safe_set_uniform(self.ssao_blur_prog, 'u_blur_normal_sigma', self.ssao_blur_normal_sigma)
-
-        self.ssao_blur_vao.render(mode=moderngl.TRIANGLES, vertices=3)
 
 if __name__ == '__main__':
     mesh = Mesh.from_path('resources/meshes/lantern.obj')
