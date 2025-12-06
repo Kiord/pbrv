@@ -8,6 +8,9 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedo;
 uniform sampler2D gRMAO;
+uniform sampler2D u_ssao;
+
+uniform bool      u_use_ssao;
 
 uniform vec3 u_lightPos;
 uniform vec3 u_lightColor;
@@ -150,6 +153,10 @@ void main()
     float NdotL = max(dot(N, L), 0.0);                
     vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL; 
 
+    // float ao = 1.0;
+    // if (u_use_ssao) {
+    //     ao = texture(u_ssao, v_uv).r;
+    // }
 
     vec3 ambient = vec3(0.005) * albedo * ao;
     vec3 color = ambient + Lo;
@@ -158,4 +165,11 @@ void main()
     color = ACESFilmicToneMapping(color);
    
     fragColor = vec4(color, 1.0);
+
+    // if (sin(u_time)> 0.0)
+    //     fragColor.rgb = vec3(texture(u_ssao, v_uv).r);
+    // else
+    //     fragColor.rgb = vec3(ao);
+    
+    // fragColor.rgb = vec3(texture(u_ssao, v_uv).r);
 }
