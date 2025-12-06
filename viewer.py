@@ -1,18 +1,10 @@
-import os
-import numpy as np
-import trimesh
-from typing import Optional
-
-import moderngl
-from moderngl_window import WindowConfig, run_window_config, find_window_classes
+from moderngl_window import WindowConfig, run_window_config
 from pyrr import matrix44
 from camera import TrackballCamera
 from mouse import OSMouse
 import time
 from scene import Scene, Mesh, Material
-from constants import EPSILON, TexUnit
-from utils import safe_set_uniform
-from ssao import SSAOPass, SSAOConfig
+from ssao import SSAOPass
 from gbuffer import GBuffer
 from geometry_pass import GeometryPass
 from lighting_pass import LightingPass
@@ -50,12 +42,8 @@ class Viewer(WindowConfig):
         self._last_click_time = 0.0
         self._double_click_max_delay = 0.3  # seconds
         
-
         # --- mesh ---
-        mesh = self.scene.mesh
-        data = np.hstack([mesh.vertices, mesh.normals, mesh.uv, mesh.tangents]).astype("f4")
-        self.vbo = self.ctx.buffer(data.tobytes())
-        self.ibo = self.ctx.buffer(mesh.faces.astype("i4").tobytes())
+        self.vbo, self.ibo = self.scene.mesh.to_gl(self.ctx)
 
         # --- Passes ---
         self.gbuffer = GBuffer(self.ctx, *self.window_size)

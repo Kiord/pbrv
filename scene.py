@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Tuple, Optional
-import os
+from moderngl import Context
 
 import numpy as np
 import trimesh as tm
@@ -141,6 +141,11 @@ class Mesh:
             faces=faces.astype("i4"),
         )
 
+    def to_gl(self, ctx:Context):
+        data = np.hstack([self.vertices, self.normals, self.uv, self.tangents]).astype("f4")
+        vbo = ctx.buffer(data.tobytes())
+        ibo = ctx.buffer(self.faces.astype("i4").tobytes())
+        return vbo, ibo
 
 @dataclass
 class Scene:
