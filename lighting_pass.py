@@ -2,13 +2,14 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import moderngl
-from moderngl import Context, Program, VertexArray, Texture
+from moderngl import Context, Program, VertexArray, Texture, TextureCube
 import numpy as np
 
 from constants import TexUnit
 from utils import Pass, safe_set_uniform
 from gbuffer import GBuffer
-
+from scene import EnvMap
+from ibl import EnvironmentMapPrecomputer
 
 @dataclass
 class LightingConfig:
@@ -20,15 +21,25 @@ class LightingPass(Pass):
         self,
         ctx: Context,
         load_program_fn,
+        envmap:Optional[EnvMap],
         config: Optional[LightingConfig] = None,
     ):
         super().__init__(ctx, load_program_fn)
+        
+        self.irradiance_tex:Optional[TextureCube ] = None
+        self.specular_tex:Optional[TextureCube ] = None
+        if envmap is not None:
+            precomp = EnvironmentMapPrecomputer(self.ctx)
+            env_tex = envmap.to_gl(self.ctx)
+            self.irradiance_tex, self.specular_tex = precomp(env_tex, release=True)
+
         self.cfg = config or LightingConfig()
 
         self.prog: Optional[Program] = None
         self.vao: Optional[VertexArray] = None
 
         self.reload_shaders()
+        
 
     def reload_shaders(self) -> None:
         if isinstance(self.prog, Program):

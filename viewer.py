@@ -3,11 +3,14 @@ from pyrr import matrix44
 from camera import TrackballCamera
 from mouse import OSMouse
 import time
-from scene import Scene, Mesh, Material
+from scene import Scene, Mesh, Material, CubeMap, Panorama
 from ssao import SSAOPass
 from gbuffer import GBuffer
 from geometry_pass import GeometryPass
 from lighting_pass import LightingPass
+from ibl import EnvironmentMapPrecomputer, PrefilterSettings
+from typing import Optional
+from moderngl import TextureCube
 
 class Viewer(WindowConfig):
     title = "pbrv"
@@ -52,14 +55,14 @@ class Viewer(WindowConfig):
             self.ctx,
             self.load_program,
             self.scene,
-            self.vbo   ,
+            self.vbo,
             self.ibo,
         )
 
         self.ssao_pass = SSAOPass(self.ctx, self.load_program)
 
-        self.lighting_pass = LightingPass(self.ctx, self.load_program)
-
+        self.lighting_pass = LightingPass(self.ctx, self.load_program, self.scene.envmap)
+              
 
     def reload_shaders(self):
         self.geometry_pass.reload_shaders()

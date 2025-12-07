@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from moderngl_window import run_window_config
 
 from viewer import Viewer
-from scene import Scene, Material, Mesh
+from scene import Scene, Material, Mesh, EnvMap, Panorama, CubeMap
 
 
 def parse_value_or_path(
@@ -91,6 +91,13 @@ def main() -> None:
         action='store_true',
         help="Enable SSAO",
     )
+    parser.add_argument(
+        "--envmap", '-em',
+        dest="envmap_path",
+        type=Path,
+        metavar="PATH",
+        help="Cubemap directory with right/left/top/bottom/front/back images. Or panorama image path",
+    )
 
     args, mw_args = parser.parse_known_args()
 
@@ -133,6 +140,18 @@ def main() -> None:
     except ValueError as e:
         parser.error(str(e))
 
+
+    envmap:Optional[EnvMap] = None
+    if args.envmap_path is not None:
+        if not args.envmap_path.exists():
+            parser.error(f"{args.envmap_path} does not exist")
+        is_cubemap = args.envmap_path.is_dir()
+        is_panorama = args.envmap_path.is_file()
+        if not(is_cubemap or is_panorama):
+            parser.error(f"{args.envmap_path} is neither a file nor a directory")
+        cls = CubeMap if is_cubemap else Panorama
+        envmap = cls.from_path(str(args.envmap_path))
+
     mesh = Mesh.from_path(str(args.mesh_path))
 
     material = Material.from_map_paths(
@@ -147,7 +166,7 @@ def main() -> None:
     material.roughness = roughness_value
     material.metalness = metalness_value
 
-    Viewer.scene = Scene(mesh=mesh, material=material)
+    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap)
     Viewer.use_ssao = args.use_ssao
 
     

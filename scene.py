@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 from typing import Tuple, Optional
+import moderngl
 from moderngl import Context
+from utils import load_rgb_image_auto
 
 import numpy as np
 import trimesh as tm
 import cv2
+import os
 
 
 def _load_map(path: Optional[str]) -> Optional[np.ndarray]:
@@ -72,11 +75,11 @@ class Material:
 
 @dataclass
 class Mesh:
-    vertices: np.ndarray  # (N, 3), float32
-    normals: np.ndarray   # (N, 3), float32
-    faces: np.ndarray     # (M, 3), int32
-    uv: np.ndarray        # (N, 2), float32
-    tangents: np.ndarray  # (N, 3), float32
+    vertices:   np.ndarray  # N 3 float32
+    normals:    np.ndarray  # N 3 float32
+    faces:      np.ndarray  # M 3 int32
+    uv:         np.ndarray  # N 2 float32
+    tangents:   np.ndarray  # N 3 float32
 
     @staticmethod
     def _compute_tangents(vertices: np.ndarray,
@@ -96,7 +99,7 @@ class Mesh:
         duv1 = uv1 - uv0 
         duv2 = uv2 - uv0 
 
-        denom = duv1[:, 0] * duv2[:, 1] - duv2[:, 0] * duv1[:, 1]  # (M,)
+        denom = duv1[:, 0] * duv2[:, 1] - duv2[:, 0] * duv1[:, 1]
         r = np.zeros_like(denom, dtype=np.float32)
         valid = np.abs(denom) > 1e-8
         r[valid] = 1.0 / denom[valid]
@@ -148,6 +151,94 @@ class Mesh:
         return vbo, ibo
 
 @dataclass
+class Panorama:
+    image: np.ndarray
+    
+    @classmethod
+    def from_path(cls, image_path: str):
+        image, _ = load_rgb_image_auto(image_path) 
+        return cls(image=image)
+    
+    def to_gl(self, ctx:Context):
+       
+        if self.image.dtype == np.uint8:
+            img_f = (self.image.astype("f4") / 255.0).astype("f2")
+        else:
+            img_f = self.image.astype("f2")
+
+        h, w = self.image.shape[:2]
+        pano_tex = ctx.texture(
+            (w, h),
+            components=3,
+            data=img_f.tobytes(),
+            dtype="f2",
+        )
+        pano_tex.build_mipmaps()
+        pano_tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
+        pano_tex.repeat_x = True
+        pano_tex.repeat_y = True
+        
+        return pano_tex
+
+@dataclass
+class CubeMap:
+    front:  np.ndarray
+    back:   np.ndarray
+    left:   np.ndarray
+    right:  np.ndarray
+    top:    np.ndarray
+    bottom: np.ndarray
+    
+    @classmethod
+    def from_path(cls, cubemap_dir: str):
+        front, suffix = load_rgb_image_auto(cubemap_dir + os.sep + 'front') 
+        back, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'back', [suffix]) 
+        right, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'right', [suffix]) 
+        left, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'left', [suffix]) 
+        top, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'top', [suffix]) 
+        bottom, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'bottom', [suffix])
+        return cls(front=front, back=back, right=right, left=left, top=top, bottom=bottom)
+    
+    def to_gl(self, ctx:Context):
+       
+        faces = [
+            self.right,
+            self.left,
+            self.top,
+            self.bottom,
+            self.front,
+            self.back,
+        ]
+
+        h, w, c = faces[0].shape
+        for f in faces[1:]:
+            if f.shape != faces[0].shape:
+                raise ValueError("All cubemap faces must have the same size")
+
+        # Pack faces in +X, -X, +Y, -Y, +Z, -Z order
+        data = np.concatenate(
+            [f.astype(np.uint8).reshape(-1, c) for f in faces],
+            axis=0,
+        )
+
+        cube_tex = ctx.texture_cube(
+            (w, h),
+            components=c,
+            data=data.tobytes(),
+            dtype="f1",  # normalized 0..1 from 8-bit
+        )
+        cube_tex.build_mipmaps()
+        cube_tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
+        cube_tex.repeat_x = True
+        cube_tex.repeat_y = True
+        return cube_tex
+
+EnvMap = Panorama | CubeMap
+
+
+@dataclass
 class Scene:
     mesh: Mesh
     material: Material
+    envmap: Optional[EnvMap]=None
+
