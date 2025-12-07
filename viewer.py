@@ -163,6 +163,7 @@ if __name__ == '__main__':
         metalness_path='resources/textures/lantern_m.jpg',
         ambient_occlusion_path='resources/textures/lantern_ao.jpg',
     )
+    envmap = Panorama.from_path('resources/panoramas/hangar1.jpg')
 
-    Viewer.scene = Scene(mesh=mesh, material=material)
+    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap)
     run_window_config(Viewer)
