@@ -150,7 +150,6 @@ vec3 evaluateDirectLightingBRDF(
     vec3 albedo,
     float roughness,
     float metallic,
-    out vec3 F0_out,
     out vec3 F_out
 ){
     vec3 L = normalize(u_lightPos - worldPos);
@@ -159,15 +158,13 @@ vec3 evaluateDirectLightingBRDF(
     float attenuation = 1.0 / (distance * distance);
     vec3 radiance     = u_lightColor * attenuation;
 
-    vec3 F0 = vec3(0.04);
+    vec3 F0 = vec3(0.02);
     F0 = mix(F0, albedo, metallic);
 
     float NdotL = max(dot(N, L), 0.0);
 
     vec3 specularBRDF = evalSpecularBRDF(N, V, L, roughness, F0, F_out);
     vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F_out);
-
-    F0_out = F0;
 
     // Lo_direct
     return (diffuseBRDF + specularBRDF) * radiance * NdotL;
@@ -179,14 +176,16 @@ vec3 evaluateIBLBRDF(
     vec3 albedo,
     float roughness,
     float metallic,
-    float ao,
-    vec3 F0
+    float ao
 ){
     if (!u_use_env) {
         return vec3(0.0);
     }
 
     float NdotV = max(dot(N, V), 0.0);
+
+    vec3 F0 = vec3(0.02);
+    F0 = mix(F0, albedo, metallic);
 
     // Use view-dependent Fresnel for IBL
     vec3 F_ibl = fresnelSchlick(NdotV, F0);
@@ -244,19 +243,17 @@ void main()
         ao = texture(u_ssao, v_uv).r;
     }
 
-    vec3 F0;
     vec3 F_direct; // not used outside, but needed by evalSpecularBRDF
     vec3 Lo_direct = evaluateDirectLightingBRDF(
         worldPos, N, V,
         albedo, roughness, metallic,
-        F0, F_direct
+        F_direct
     );
 
     // -------- IBL (BRDF-based) --------
     vec3 Lo_ibl = evaluateIBLBRDF(
         N, V,
-        albedo, roughness, metallic, ao,
-        F0
+        albedo, roughness, metallic, ao
     );
 
     // -------- Ambient / SSAO --------
