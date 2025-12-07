@@ -26,3 +26,10 @@ The window is a [moderngl window](https://github.com/moderngl/moderngl-window) s
     - Cubemap prefiltering
         - Irradiance (Cosine)
         - Specular (GGX)
+
+## Dependencies
+- moderngl
+- moderngl-window
+- numpy
+- pyrr
+- opencv-python
