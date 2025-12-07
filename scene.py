@@ -26,6 +26,10 @@ def _load_map(path: Optional[str]) -> Optional[np.ndarray]:
     img = img.astype(np.float32) / 255.0
     return img
 
+@dataclass
+class PointLight:
+    position: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+    color: Tuple[float, float, float] = (0.0, 0.0, 0.0)
 
 @dataclass
 class Material:
@@ -241,4 +245,5 @@ class Scene:
     mesh: Mesh
     material: Material
     envmap: Optional[EnvMap]=None
+    point_light: Optional[PointLight]=None
 

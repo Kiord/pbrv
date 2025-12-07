@@ -3,14 +3,12 @@ from pyrr import matrix44
 from camera import TrackballCamera
 from mouse import OSMouse
 import time
-from scene import Scene, Mesh, Material, CubeMap, Panorama
+from scene import Scene, Mesh, Material, Panorama, PointLight
 from ssao import SSAOPass
 from gbuffer import GBuffer
 from geometry_pass import GeometryPass
 from lighting_pass import LightingPass
-from ibl import EnvironmentMapPrecomputer, PrefilterSettings
-from typing import Optional
-from moderngl import TextureCube
+
 
 class Viewer(WindowConfig):
     title = "pbrv"
@@ -61,7 +59,11 @@ class Viewer(WindowConfig):
 
         self.ssao_pass = SSAOPass(self.ctx, self.load_program)
 
-        self.lighting_pass = LightingPass(self.ctx, self.load_program, self.scene.envmap)
+        self.lighting_pass = LightingPass(
+            self.ctx, 
+            self.load_program, 
+            self.scene.envmap,
+            self.scene.point_light)
               
 
     def reload_shaders(self):
@@ -165,5 +167,7 @@ if __name__ == '__main__':
     )
     envmap = Panorama.from_path('resources/panoramas/hangar1.jpg')
 
-    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap)
+    point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
+
+    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light)
     run_window_config(Viewer)

@@ -101,8 +101,6 @@ def main() -> None:
 
     args, mw_args = parser.parse_known_args()
 
-    print(args)
-
     if not args.mesh_path.exists():
         parser.error(f"Mesh path does not exist: {args.mesh_path}")
     

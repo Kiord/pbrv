@@ -8,13 +8,8 @@ import numpy as np
 from constants import TexUnit
 from utils import Pass, safe_set_uniform
 from gbuffer import GBuffer
-from scene import EnvMap
+from scene import EnvMap, PointLight
 from ibl import EnvironmentMapPrecomputer
-
-@dataclass
-class LightingConfig:
-    light_pos: Tuple[float, float, float] = (1.0, 1.0, 1.0)
-    light_color: Tuple[float, float, float] = (1.0, 1.0, 1.0)
 
 class LightingPass(Pass):
     def __init__(
@@ -22,7 +17,7 @@ class LightingPass(Pass):
         ctx: Context,
         load_program_fn,
         envmap:Optional[EnvMap],
-        config: Optional[LightingConfig] = None,
+        point_light: Optional[PointLight] = None,
     ):
         super().__init__(ctx, load_program_fn)
         
@@ -34,7 +29,7 @@ class LightingPass(Pass):
             env_tex = envmap.to_gl(self.ctx)
             self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(env_tex, release=True)
 
-        self.cfg = config or LightingConfig()
+        self.point_light = point_light or PointLight()
 
         self.prog: Optional[Program] = None
         self.vao: Optional[VertexArray] = None
@@ -84,8 +79,8 @@ class LightingPass(Pass):
 
         safe_set_uniform(self.prog, "u_use_ssao", bool(use_ssao))
         safe_set_uniform(self.prog, "u_viewPos", tuple(eye_pos))
-        safe_set_uniform(self.prog, "u_lightPos", self.cfg.light_pos)
-        safe_set_uniform(self.prog, "u_lightColor", self.cfg.light_color)
+        safe_set_uniform(self.prog, "u_lightPos", self.point_light.position)
+        safe_set_uniform(self.prog, "u_lightColor", self.point_light.color)
         safe_set_uniform(self.prog, "u_time", time_value)
         use_env = self.irradiance_tex is not None and self.specular_tex is not None
         safe_set_uniform(self.prog, "u_use_env", use_env)
