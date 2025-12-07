@@ -30,6 +30,7 @@ The window is a [moderngl window](https://github.com/moderngl/moderngl-window) s
 ## Dependencies
 - moderngl
 - moderngl-window
+- trimesh
 - numpy
 - pyrr
 - opencv-python
