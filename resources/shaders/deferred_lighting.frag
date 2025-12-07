@@ -106,6 +106,12 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }  
 
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0)
+               * pow(1.0 - cosTheta, 5.0);
+}
+
 vec3 get_world_dir_from_uv(vec2 uv)
 {
     vec2 ndc = uv * 2.0 - 1.0;
@@ -187,7 +193,7 @@ vec3 evaluateIBLBRDF(
     vec3 F0 = vec3(0.02);
     F0 = mix(F0, albedo, metallic);
 
-    vec3 F_ibl = fresnelSchlick(NdotV, F0);
+    vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);
 
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
