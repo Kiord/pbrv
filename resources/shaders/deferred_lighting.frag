@@ -149,8 +149,7 @@ vec3 evaluateDirectLightingBRDF(
     vec3 V,
     vec3 albedo,
     float roughness,
-    float metallic,
-    out vec3 F_out
+    float metallic
 ){
     vec3 L = normalize(u_lightPos - worldPos);
 
@@ -163,8 +162,9 @@ vec3 evaluateDirectLightingBRDF(
 
     float NdotL = max(dot(N, L), 0.0);
 
-    vec3 specularBRDF = evalSpecularBRDF(N, V, L, roughness, F0, F_out);
-    vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F_out);
+    vec3 F;
+    vec3 specularBRDF = evalSpecularBRDF(N, V, L, roughness, F0, F);
+    vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F);
 
     // Lo_direct
     return (diffuseBRDF + specularBRDF) * radiance * NdotL;
@@ -187,20 +187,15 @@ vec3 evaluateIBLBRDF(
     vec3 F0 = vec3(0.02);
     F0 = mix(F0, albedo, metallic);
 
-    // Use view-dependent Fresnel for IBL
     vec3 F_ibl = fresnelSchlick(NdotV, F0);
 
-    // Reuse the diffuse BRDF helper for irradiance
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
-    // Diffuse IBL: irradiance (E) * diffuse BRDF
     vec3 irradiance = texture(u_irradiance_env, N).rgb / PI;
     vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;
 
-    // Specular IBL: prefiltered env + Fresnel
     vec3 R = reflect(-V, N);
 
-    // NOTE: set this to num_mips(specular_cube) - 1
     float lod = roughness * float(u_num_specular_mips - 1);
     vec3 prefilteredColor = textureLod(u_specular_env, R, lod).rgb;
 
@@ -243,11 +238,9 @@ void main()
         ao = texture(u_ssao, v_uv).r;
     }
 
-    vec3 F_direct; // not used outside, but needed by evalSpecularBRDF
     vec3 Lo_direct = evaluateDirectLightingBRDF(
         worldPos, N, V,
-        albedo, roughness, metallic,
-        F_direct
+        albedo, roughness, metallic
     );
 
     // -------- IBL (BRDF-based) --------
@@ -255,8 +248,6 @@ void main()
         N, V,
         albedo, roughness, metallic, ao
     );
-
-    // -------- Ambient / SSAO --------
 
     vec3 color = Lo_direct + Lo_ibl;
 
