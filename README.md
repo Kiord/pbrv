@@ -8,6 +8,8 @@
 
 `python pbrv.py [--albedo VALUE_OR_PATH] [--normal PATH] [--roughness VALUE_OR_PATH] [--metalness VALUE_OR_PATH] [--ambient-occlusion PATH] [-ssao] [--envmap PATH] mesh_path `
 
+The window is a [moderngl window](https://github.com/moderngl/moderngl-window) so you can also use its arguments. For instance, set GLFW backend by adding `--window glfw`.
+
 ## Features/Specs
 - Interactive window
     - Trackball camera (with path indepedance)
