@@ -107,7 +107,7 @@ class EnvironmentMapPrecomputer:
         if release:
             base_cube.release()
 
-        return irradiance_cube, specular_cube
+        return irradiance_cube, specular_cube, max_mips
 
 
     # ------------------------------------------------------------------ #
@@ -226,20 +226,23 @@ vec2 sample_spherical_map(vec3 v) {
 }
 
 vec3 face_uv_to_dir(uint face, vec2 uv) {
-    vec2 xy = uv * 2.0 - 1.0;
+    // uv in [0, 1]
+    vec2 st = uv * 2.0 - 1.0;   // [-1, 1]
+    float s = st.x;
+    float t = st.y;
 
-    if (face == 0u) {
-        return normalize(vec3( 1.0,    xy.y,  -xy.x));
-    } else if (face == 1u) {
-        return normalize(vec3(-1.0,    xy.y,   xy.x));
-    } else if (face == 2u) {
-        return normalize(vec3( xy.x,   1.0,   -xy.y));
-    } else if (face == 3u) {
-        return normalize(vec3( xy.x,  -1.0,    xy.y));
-    } else if (face == 4u) {
-        return normalize(vec3( xy.x,   xy.y,   1.0));
-    } else {
-        return normalize(vec3(-xy.x,   xy.y,  -1.0));
+    if (face == 0u) {          // +X (right)
+        return normalize(vec3( 1.0, -t, -s));
+    } else if (face == 1u) {   // -X (left)
+        return normalize(vec3(-1.0, -t,  s));
+    } else if (face == 2u) {   // +Y (top)
+        return normalize(vec3( s,  1.0,  t));
+    } else if (face == 3u) {   // -Y (bottom)
+        return normalize(vec3( s, -1.0, -t));
+    } else if (face == 4u) {   // +Z (front)
+        return normalize(vec3( s, -t,  1.0));
+    } else {                   // -Z (back)
+        return normalize(vec3(-s, -t, -1.0));
     }
 }
 
@@ -316,20 +319,23 @@ vec3 importance_sample_ggx(vec2 Xi, vec3 N, float roughness) {
 }
 
 vec3 face_uv_to_dir(uint face, vec2 uv) {
-    vec2 xy = uv * 2.0 - 1.0;
+    // uv in [0, 1]
+    vec2 st = uv * 2.0 - 1.0;   // [-1, 1]
+    float s = st.x;
+    float t = st.y;
 
-    if (face == 0u) {
-        return normalize(vec3( 1.0,    xy.y,  -xy.x));
-    } else if (face == 1u) {
-        return normalize(vec3(-1.0,    xy.y,   xy.x));
-    } else if (face == 2u) {
-        return normalize(vec3( xy.x,   1.0,   -xy.y));
-    } else if (face == 3u) {
-        return normalize(vec3( xy.x,  -1.0,    xy.y));
-    } else if (face == 4u) {
-        return normalize(vec3( xy.x,   xy.y,   1.0));
-    } else {
-        return normalize(vec3(-xy.x,   xy.y,  -1.0));
+    if (face == 0u) {          // +X (right)
+        return normalize(vec3( 1.0, -t, -s));
+    } else if (face == 1u) {   // -X (left)
+        return normalize(vec3(-1.0, -t,  s));
+    } else if (face == 2u) {   // +Y (top)
+        return normalize(vec3( s,  1.0,  t));
+    } else if (face == 3u) {   // -Y (bottom)
+        return normalize(vec3( s, -1.0, -t));
+    } else if (face == 4u) {   // +Z (front)
+        return normalize(vec3( s, -t,  1.0));
+    } else {                   // -Z (back)
+        return normalize(vec3(-s, -t, -1.0));
     }
 }
 
@@ -406,20 +412,23 @@ vec2 hammersley(uint i, uint N) {
 }
 
 vec3 face_uv_to_dir(uint face, vec2 uv) {
-    vec2 xy = uv * 2.0 - 1.0;
+    // uv in [0, 1]
+    vec2 st = uv * 2.0 - 1.0;   // [-1, 1]
+    float s = st.x;
+    float t = st.y;
 
-    if (face == 0u) {
-        return normalize(vec3( 1.0,    xy.y,  -xy.x));
-    } else if (face == 1u) {
-        return normalize(vec3(-1.0,    xy.y,   xy.x));
-    } else if (face == 2u) {
-        return normalize(vec3( xy.x,   1.0,   -xy.y));
-    } else if (face == 3u) {
-        return normalize(vec3( xy.x,  -1.0,    xy.y));
-    } else if (face == 4u) {
-        return normalize(vec3( xy.x,   xy.y,   1.0));
-    } else {
-        return normalize(vec3(-xy.x,   xy.y,  -1.0));
+    if (face == 0u) {          // +X (right)
+        return normalize(vec3( 1.0, -t, -s));
+    } else if (face == 1u) {   // -X (left)
+        return normalize(vec3(-1.0, -t,  s));
+    } else if (face == 2u) {   // +Y (top)
+        return normalize(vec3( s,  1.0,  t));
+    } else if (face == 3u) {   // -Y (bottom)
+        return normalize(vec3( s, -1.0, -t));
+    } else if (face == 4u) {   // +Z (front)
+        return normalize(vec3( s, -t,  1.0));
+    } else {                   // -Z (back)
+        return normalize(vec3(-s, -t, -1.0));
     }
 }
 
@@ -630,19 +639,23 @@ if __name__ == '__main__':
         uniform float u_lod;
 
         vec3 face_uv_to_dir(uint face, vec2 uv) {
-            vec2 xy = uv * 2.0 - 1.0;
-            if (face == 0u) {
-                return normalize(vec3( 1.0,    xy.y,  -xy.x));
-            } else if (face == 1u) {
-                return normalize(vec3(-1.0,    xy.y,   xy.x));
-            } else if (face == 2u) {
-                return normalize(vec3( xy.x,   1.0,   -xy.y));
-            } else if (face == 3u) {
-                return normalize(vec3( xy.x,  -1.0,    xy.y));
-            } else if (face == 4u) {
-                return normalize(vec3( xy.x,   xy.y,   1.0));
-            } else {
-                return normalize(vec3(-xy.x,   xy.y,  -1.0));
+            // uv in [0, 1]
+            vec2 st = uv * 2.0 - 1.0;   // [-1, 1]
+            float s = st.x;
+            float t = st.y;
+
+            if (face == 0u) {          // +X (right)
+                return normalize(vec3( 1.0, -t, -s));
+            } else if (face == 1u) {   // -X (left)
+                return normalize(vec3(-1.0, -t,  s));
+            } else if (face == 2u) {   // +Y (top)
+                return normalize(vec3( s,  1.0,  t));
+            } else if (face == 3u) {   // -Y (bottom)
+                return normalize(vec3( s, -1.0, -t));
+            } else if (face == 4u) {   // +Z (front)
+                return normalize(vec3( s, -t,  1.0));
+            } else {                   // -Z (back)
+                return normalize(vec3(-s, -t, -1.0));
             }
         }
 

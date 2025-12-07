@@ -26,12 +26,13 @@ class LightingPass(Pass):
     ):
         super().__init__(ctx, load_program_fn)
         
-        self.irradiance_tex:Optional[TextureCube ] = None
-        self.specular_tex:Optional[TextureCube ] = None
+        self.irradiance_tex:Optional[TextureCube] = None
+        self.specular_tex:Optional[TextureCube] = None
+        self.num_specular_mips = 0
         if envmap is not None:
             precomp = EnvironmentMapPrecomputer(self.ctx)
             env_tex = envmap.to_gl(self.ctx)
-            self.irradiance_tex, self.specular_tex = precomp(env_tex, release=True)
+            self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(env_tex, release=True)
 
         self.cfg = config or LightingConfig()
 
@@ -40,7 +41,6 @@ class LightingPass(Pass):
 
         self.reload_shaders()
         
-
     def reload_shaders(self) -> None:
         if isinstance(self.prog, Program):
             self.prog.release()
@@ -56,12 +56,16 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "gAlbedo", TexUnit.GBUFFER_ALBEDO)
         safe_set_uniform(self.prog, "gRMAO", TexUnit.GBUFFER_RMAO)
         safe_set_uniform(self.prog, "u_ssao", TexUnit.SSAO_BLUR)
+        safe_set_uniform(self.prog, "u_irradiance_env", TexUnit.ENV_IRRADIANCE)
+        safe_set_uniform(self.prog, "u_specular_env", TexUnit.ENV_SPECULAR)
 
     def render(
         self,
         gbuffer: GBuffer,
         ssao_tex: Texture,
         eye_pos: np.ndarray,
+        view_matrix: np.ndarray,
+        proj_matrix: np.ndarray,
         use_ssao: bool,
         time_value: float,
         window_size: Tuple[int, int],
@@ -83,5 +87,13 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "u_lightPos", self.cfg.light_pos)
         safe_set_uniform(self.prog, "u_lightColor", self.cfg.light_color)
         safe_set_uniform(self.prog, "u_time", time_value)
+        use_env = self.irradiance_tex is not None and self.specular_tex is not None
+        safe_set_uniform(self.prog, "u_use_env", use_env)
+        safe_set_uniform(self.prog, "u_invView", np.linalg.inv(view_matrix).astype("f4"))
+        safe_set_uniform(self.prog, "u_invProj", np.linalg.inv(proj_matrix).astype("f4"))
+        safe_set_uniform(self.prog, "u_num_specular_mips", self.num_specular_mips)
+        if use_env:
+            self.irradiance_tex.use(location=TexUnit.ENV_IRRADIANCE)
+            self.specular_tex.use(location=TexUnit.ENV_SPECULAR)
 
         self.vao.render(mode=moderngl.TRIANGLES, vertices=3)

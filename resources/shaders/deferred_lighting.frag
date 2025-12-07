@@ -10,11 +10,18 @@ uniform sampler2D gAlbedo;
 uniform sampler2D gRMAO;
 uniform sampler2D u_ssao;
 
-uniform bool      u_use_ssao;
+uniform bool u_use_env;
+uniform samplerCube u_irradiance_env;
+uniform samplerCube u_specular_env;
+uniform int u_num_specular_mips;
+
+uniform bool u_use_ssao;
 
 uniform vec3 u_lightPos;
 uniform vec3 u_lightColor;
 uniform vec3 u_viewPos;
+uniform mat4 u_invView;
+uniform mat4 u_invProj;
 
 uniform float u_time;
 
@@ -99,69 +106,165 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }  
 
+vec3 get_world_dir_from_uv(vec2 uv)
+{
+    vec2 ndc = uv * 2.0 - 1.0;
+    vec4 clip = vec4(ndc, 1.0, 1.0);
+    vec4 view = u_invProj * clip;
+    view /= view.w;
+    vec3 viewDir = normalize(view.xyz);
+    vec4 worldDir4 = u_invView * vec4(viewDir, 0.0);
+    return normalize(worldDir4.xyz);
+}
+
+vec3 evalSpecularBRDF(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0, out vec3 F)
+{
+    vec3 H = normalize(V + L);
+
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+
+    float NDF = DistributionGGX(N, H, roughness);
+    float G   = GeometrySmith(N, V, L, roughness);
+    F         = fresnelSchlick(max(dot(H, V), 0.0), F0);
+
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * NdotV * NdotL + 0.0001;
+
+    return numerator / denominator;
+}
+
+vec3 evalDiffuseBRDF(vec3 albedo, float metallic, vec3 F)
+{
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;
+
+    return kD * albedo / PI;
+}
+
+vec3 evaluateDirectLightingBRDF(
+    vec3 worldPos,
+    vec3 N,
+    vec3 V,
+    vec3 albedo,
+    float roughness,
+    float metallic,
+    out vec3 F0_out,
+    out vec3 F_out
+){
+    vec3 L = normalize(u_lightPos - worldPos);
+
+    float distance    = length(u_lightPos - worldPos);
+    float attenuation = 1.0 / (distance * distance);
+    vec3 radiance     = u_lightColor * attenuation;
+
+    vec3 F0 = vec3(0.04);
+    F0 = mix(F0, albedo, metallic);
+
+    float NdotL = max(dot(N, L), 0.0);
+
+    vec3 specularBRDF = evalSpecularBRDF(N, V, L, roughness, F0, F_out);
+    vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F_out);
+
+    F0_out = F0;
+
+    // Lo_direct
+    return (diffuseBRDF + specularBRDF) * radiance * NdotL;
+}
+
+vec3 evaluateIBLBRDF(
+    vec3 N,
+    vec3 V,
+    vec3 albedo,
+    float roughness,
+    float metallic,
+    float ao,
+    vec3 F0
+){
+    if (!u_use_env) {
+        return vec3(0.0);
+    }
+
+    float NdotV = max(dot(N, V), 0.0);
+
+    // Use view-dependent Fresnel for IBL
+    vec3 F_ibl = fresnelSchlick(NdotV, F0);
+
+    // Reuse the diffuse BRDF helper for irradiance
+    vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
+
+    // Diffuse IBL: irradiance (E) * diffuse BRDF
+    vec3 irradiance = texture(u_irradiance_env, N).rgb / PI;
+    vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;
+
+    // Specular IBL: prefiltered env + Fresnel
+    vec3 R = reflect(-V, N);
+
+    // NOTE: set this to num_mips(specular_cube) - 1
+    float lod = roughness * float(u_num_specular_mips - 1);
+    vec3 prefilteredColor = textureLod(u_specular_env, R, lod).rgb;
+
+    vec3 specIBL = prefilteredColor * F_ibl;
+
+    float specWeight = roughness * roughness;
+    float specAO = mix(1.0, ao, specWeight);
+
+    return ao * diffuseIBL + specAO * specIBL;
+}
+
 void main()
 {
     vec3 worldPos = texture(gPosition, v_uv).rgb;
-    vec3 N        = texture(gNormal,   v_uv).rgb;
-    vec3 albedo   = texture(gAlbedo,   v_uv).rgb;
-    vec4 rmao     = texture(gRMAO,     v_uv);
+    vec3 viewDir = get_world_dir_from_uv(v_uv);
 
-    // Early out if nothing was drawn here
     if (worldPos == vec3(0.0)) {
-        fragColor = vec4(0.0);
+        if (u_use_env){
+            vec3 bg  = texture(u_specular_env, viewDir).rgb;
+            fragColor = vec4(bg, 1.0);
+        }
         return;
     }
 
-    // Decode material params from gRMAO
+    vec3 N      = texture(gNormal, v_uv).rgb;
+    vec3 albedo = texture(gAlbedo, v_uv).rgb;
+    vec4 rmao   = texture(gRMAO, v_uv);
+
     float roughness = clamp(rmao.r, 0.04, 1.0);
     float metallic  = clamp(rmao.g, 0.0, 1.0);
     float ao        = clamp(rmao.b, 0.0, 1.0);
 
-
-
-    // Assume albedo is stored in sRGB, convert to linear
-    //albedo = pow(albedo, vec3(2.2));
-
-    // Re-normalize normal
     N = normalize(N);
 
-    vec3 V = normalize(u_viewPos  - worldPos);
-    vec3 L = normalize(u_lightPos - worldPos);
-    vec3 H = normalize(V + L);
+    // V is surface -> camera
+    vec3 V = -viewDir;
 
-    vec3 F0 = vec3(0.04); 
-    F0 = mix(F0, albedo, metallic);
-
-    float distance    = length(u_lightPos - worldPos);
-    float attenuation = 1.0 / (distance * distance);
-    vec3 radiance     = u_lightColor * attenuation;        
-    
-    // cook-torrance brdf
-    float NDF = DistributionGGX(N, H, roughness);        
-    float G   = GeometrySmith(N, V, L, roughness);      
-    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
-    
-    vec3 kS = F;
-    vec3 kD = vec3(1.0) - kS;
-    kD *= 1.0 - metallic;	  
-    
-    vec3 numerator    = NDF * G * F;
-    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.0001;
-    vec3 specular     = numerator / denominator;  
-        
-    // add to outgoing radiance Lo
-    float NdotL = max(dot(N, L), 0.0);                
-    vec3 Lo = (kD * albedo / PI + specular) * radiance * NdotL; 
-
+    // -------- Direct lighting (BRDF) --------
     if (u_use_ssao) {
         ao = texture(u_ssao, v_uv).r;
     }
 
-    vec3 ambient = vec3(0.005) * albedo * ao;
-    vec3 color = ambient + Lo;
-	
+    vec3 F0;
+    vec3 F_direct; // not used outside, but needed by evalSpecularBRDF
+    vec3 Lo_direct = evaluateDirectLightingBRDF(
+        worldPos, N, V,
+        albedo, roughness, metallic,
+        F0, F_direct
+    );
+
+    // -------- IBL (BRDF-based) --------
+    vec3 Lo_ibl = evaluateIBLBRDF(
+        N, V,
+        albedo, roughness, metallic, ao,
+        F0
+    );
+
+    // -------- Ambient / SSAO --------
+
+    vec3 color = Lo_direct + Lo_ibl;
+
     color = ExposureCorrect(color, 2.1, -0.8);
     color = ACESFilmicToneMapping(color);
-    
+
     fragColor = vec4(color, 1.0);
 }

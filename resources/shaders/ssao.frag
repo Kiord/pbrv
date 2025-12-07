@@ -49,6 +49,8 @@ void main()
             continue;
 
         vec3 sampleWorld = texture(gPosition, offsetUV).xyz;
+        if (sampleWorld == vec3(0.0)) 
+            continue;
         vec3 sampleView  = (u_view * vec4(sampleWorld, 1.0)).xyz;
 
         float rangeCheck = smoothstep(0.0, 1.0,

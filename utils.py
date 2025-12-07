@@ -6,7 +6,10 @@ import cv2
 
 def safe_set_uniform(prog:Program, name: str, value: Any):
     if name in prog:
-        prog[name].value = value
+        if isinstance(value, np.ndarray):
+            prog[name].write(value.tobytes())
+        else:
+            prog[name].value = value
 
 
 class Pass:

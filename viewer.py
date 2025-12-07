@@ -146,6 +146,8 @@ class Viewer(WindowConfig):
             self.gbuffer,
             self.ssao_pass.output_texture,
             eye,
+            view, 
+            proj,
             self.use_ssao,
             time,
             self.wnd.size,
