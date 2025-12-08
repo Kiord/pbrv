@@ -262,8 +262,7 @@ void main()
 {
     vec3 worldPos = texture(gPosition, v_uv).rgb;
     vec3 viewDir = get_world_dir_from_uv(v_uv);
-
-    if (worldPos == vec3(0.0)) {
+    if (worldPos.x == 100.0) {
         if (u_use_env){
             vec3 bg  = texture(u_specular_env, viewDir).rgb;
             bg = tonemap(bg);
@@ -290,7 +289,7 @@ void main()
     if (u_use_ssao) {
         ao = texture(u_ssao, v_uv).r;
     }
-
+    
     float luminance = dot(albedo, LUMINANCE_PERCEPTION);
     vec3 Ctint = luminance > 0.0 ? albedo / luminance : vec3(1.0);
     vec3 dielectricF0 =  0.08 * specular * mix(vec3(1.0), Ctint, u_specularTint);
@@ -312,5 +311,4 @@ void main()
     color = tonemap(color);
 
     fragColor = vec4(color, 1.0);
-    //fragColor.rgb = F0;
 }

@@ -16,7 +16,7 @@ void main()
     vec3 centerN   = normalize(texture(gNormal,   v_uv).xyz);
     float centerAO = texture(u_ssao,    v_uv).r;
 
-    if (centerPos == vec3(0.0)) {
+    if (centerPos.x == 100) {
         aoBlur = 1.0;
         return;
     }
@@ -37,7 +37,7 @@ void main()
             vec3 posSample = texture(gPosition, uv).xyz;
             vec3 nSample   = normalize(texture(gNormal,   uv).xyz);
 
-            if (posSample == vec3(0.0))
+            if (posSample.x == 100)
                 continue;
 
             float posDiff = length(centerPos - posSample);
