@@ -8,7 +8,7 @@ from moderngl_window import run_window_config
 
 from viewer import Viewer
 from scene import Scene, Material, Mesh, EnvMap, Panorama, CubeMap
-
+from constants import TONE_MAPPING_IDS
 
 def parse_value_or_path(
     value: Optional[str],
@@ -100,6 +100,23 @@ def main() -> None:
         help="Cubemap directory with right/left/top/bottom/front/back images. Or panorama image path",
     )
 
+    parser.add_argument(
+        "--tone-mapping", '--tonemap', '-t', '-tm',
+        dest="tone_mapping",
+        type=str,
+        choices=TONE_MAPPING_IDS.keys(),
+        default='aces',
+        help="Tone mapping type.",
+    )
+
+    parser.add_argument(
+        "--exposure", '-exp', '-e',
+        dest="exposure",
+        type=float,
+        default=1.0,
+        help="Exposure to apply before tone mapping",
+    )
+
     args, mw_args = parser.parse_known_args()
 
     if len(args.mesh_path) > 1:
@@ -173,6 +190,8 @@ def main() -> None:
 
     Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap)
     Viewer.use_ssao = args.use_ssao
+    Viewer.tone_mapping = args.tone_mapping
+    Viewer.exposure = args.exposure
 
     
     sys.argv = sys.argv[:1]

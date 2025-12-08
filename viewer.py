@@ -3,7 +3,7 @@ from pyrr import matrix44
 from camera import TrackballCamera
 from mouse import OSMouse
 import time
-from scene import Scene, Mesh, Material, Panorama, PointLight
+from scene import Scene, Mesh, Material, Panorama
 from ssao import SSAOPass
 from gbuffer import GBuffer
 from geometry_pass import GeometryPass
@@ -18,6 +18,9 @@ class Viewer(WindowConfig):
     use_ssao = False
 
     scene: Scene = None
+
+    tone_mapping = 'aces'
+    exposure = 1.0
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -151,6 +154,8 @@ class Viewer(WindowConfig):
             view, 
             proj,
             self.use_ssao,
+            self.tone_mapping,
+            self.exposure,
             time,
             self.wnd.size,
         )

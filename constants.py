@@ -4,6 +4,8 @@ UP = np.array([0,1,0], dtype=np.float32)
 FRONT = np.array([0,0,-1], dtype=np.float32)
 EPSILON = 1e-8
 
+TONE_MAPPING_IDS = { 'simple':0, 'aces':1, 'reinhard':2, 'uncharted2':3, 'none':4}
+
 class TexUnit:
     GBUFFER_POSITION = 0
     GBUFFER_NORMAL   = 1

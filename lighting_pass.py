@@ -1,11 +1,10 @@
-from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import moderngl
 from moderngl import Context, Program, VertexArray, Texture, TextureCube
 import numpy as np
 
-from constants import TexUnit
+from constants import TexUnit, TONE_MAPPING_IDS
 from utils import Pass, safe_set_uniform
 from gbuffer import GBuffer
 from scene import EnvMap, PointLight
@@ -62,6 +61,8 @@ class LightingPass(Pass):
         view_matrix: np.ndarray,
         proj_matrix: np.ndarray,
         use_ssao: bool,
+        tone_mapping: str,
+        exposure: float,
         time_value: float,
         window_size: Tuple[int, int],
     ) -> None:
@@ -81,6 +82,9 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "u_viewPos", tuple(eye_pos))
         safe_set_uniform(self.prog, "u_lightPos", self.point_light.position)
         safe_set_uniform(self.prog, "u_lightColor", self.point_light.color)
+        tone_mapping_id = TONE_MAPPING_IDS.get(tone_mapping, 0)
+        safe_set_uniform(self.prog, "u_tone_mapping_id", tone_mapping_id)
+        safe_set_uniform(self.prog, "u_exposure", exposure)
         safe_set_uniform(self.prog, "u_time", time_value)
         use_env = self.irradiance_tex is not None and self.specular_tex is not None
         safe_set_uniform(self.prog, "u_use_env", use_env)
