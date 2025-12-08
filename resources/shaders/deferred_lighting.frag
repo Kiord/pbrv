@@ -65,6 +65,12 @@ vec3 ACESFilmicToneMapping(vec3 col){
     return LinearToGamma(curr);
 }
 
+vec3 tonemap(vec3 col){
+    vec3 res = ExposureCorrect(col, 2.1, -0.8);
+    res = ACESFilmicToneMapping(res);
+    return res;
+}
+
 
 const float PI = 3.14159265359;
   
@@ -197,8 +203,8 @@ vec3 evaluateIBLBRDF(
 
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
-    vec3 irradiance = texture(u_irradiance_env, N).rgb / PI;
-    vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;
+    vec3 irradiance = texture(u_irradiance_env, N).rgb;
+    vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;// / PI;
 
     vec3 R = reflect(-V, N);
 
@@ -221,6 +227,7 @@ void main()
     if (worldPos == vec3(0.0)) {
         if (u_use_env){
             vec3 bg  = texture(u_specular_env, viewDir).rgb;
+            bg = tonemap(bg);
             fragColor = vec4(bg, 1.0);
         }
         return;
@@ -257,8 +264,7 @@ void main()
 
     vec3 color = Lo_direct + Lo_ibl;
 
-    color = ExposureCorrect(color, 2.1, -0.8);
-    color = ACESFilmicToneMapping(color);
+    color = tonemap(color);
 
     fragColor = vec4(color, 1.0);
 }
