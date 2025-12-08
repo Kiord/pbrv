@@ -62,7 +62,7 @@ vec3 ACESFilmicToneMapping(vec3 col){
     const float ExposureBias = 2.0;
 	curr *= ExposureBias;
     curr /= Uncharted2Tonemap(vec3(W));
-    return LinearToGamma(curr);
+    return curr;//LinearToGamma(curr);
 }
 
 vec3 tonemap(vec3 col){
@@ -227,7 +227,7 @@ void main()
     if (worldPos == vec3(0.0)) {
         if (u_use_env){
             vec3 bg  = texture(u_specular_env, viewDir).rgb;
-            //bg = tonemap(bg);
+            bg = tonemap(bg);
             fragColor = vec4(bg, 1.0);
         }
         return;
@@ -264,7 +264,7 @@ void main()
 
     vec3 color = Lo_direct + Lo_ibl;
 
-    //color = tonemap(color);
+    color = tonemap(color);
 
     fragColor = vec4(color, 1.0);
 }
