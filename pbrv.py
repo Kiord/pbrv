@@ -155,7 +155,7 @@ def main() -> None:
         envmap = cls.from_path(str(args.envmap_path))
 
     if len(args.mesh_path) > 0:
-        mesh = Mesh.from_path(str(args.mesh_path))
+        mesh = Mesh.from_path(str(args.mesh_path[0]))
     else:
         mesh = Mesh.create_sphere()
 
