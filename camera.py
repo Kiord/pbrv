@@ -27,7 +27,7 @@ class TrackballCamera:
         near: float = 0.001,
         far: float = 10.0,
         ball_size: float = 0.8,
-        min_distance: float = 0.05,
+        min_distance: float = 0.005,
         max_distance: float = 5.0,
         zoom_speed:float = 0.5
     ):
