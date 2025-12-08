@@ -34,13 +34,16 @@ class PointLight:
 @dataclass
 class Material:
     albedo: Tuple[float, float, float] = (1.0, 1.0, 1.0)
-    roughness: float = 0.3
-    metalness: float = 0.1
+    roughness: float = 1.0
+    metalness: float = 0.0
+    specular: float = 0.3
+    specular_tint: float = 0.0
 
     albedo_map: Optional[np.ndarray] = None
     normal_map: Optional[np.ndarray] = None
     roughness_map: Optional[np.ndarray] = None
     metalness_map: Optional[np.ndarray] = None
+    specular_map: Optional[np.ndarray] = None
     ambient_occlusion_map: Optional[np.ndarray] = None
 
     @classmethod
@@ -50,6 +53,7 @@ class Material:
         normal_path: Optional[str] = None,
         roughness_path: Optional[str] = None,
         metalness_path: Optional[str] = None,
+        specular_path: Optional[str] = None,
         ambient_occlusion_path: Optional[str] = None,
     ) -> "Material":
         mat = cls()
@@ -58,6 +62,7 @@ class Material:
             normal_path,
             roughness_path,
             metalness_path,
+            specular_path,
             ambient_occlusion_path,
         )
         return mat
@@ -68,12 +73,14 @@ class Material:
         normal_path: Optional[str] = None,
         roughness_path: Optional[str] = None,
         metalness_path: Optional[str] = None,
+        specular_path: Optional[str] = None,
         ambient_occlusion_path: Optional[str] = None,
     ):
         self.albedo_map = _load_map(albedo_path)
         self.normal_map = _load_map(normal_path)
         self.roughness_map = _load_map(roughness_path)
         self.metalness_map = _load_map(metalness_path)
+        self.specular_map = _load_map(specular_path)
         self.ambient_occlusion_map = _load_map(ambient_occlusion_path)
 
 

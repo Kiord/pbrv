@@ -13,7 +13,7 @@ class GBuffer:
     position: moderngl.Texture = field(init=False)
     normal:   moderngl.Texture = field(init=False)
     albedo:   moderngl.Texture = field(init=False)
-    rmao:     moderngl.Texture = field(init=False)
+    rmaos:    moderngl.Texture = field(init=False)
     depth:    moderngl.Texture = field(init=False)
     fbo:      moderngl.Framebuffer = field(init=False)
 
@@ -28,12 +28,12 @@ class GBuffer:
         self.position = self.ctx.texture((self.width, self.height), 4, dtype="f2")
         self.normal   = self.ctx.texture((self.width, self.height), 4, dtype="f2")
         self.albedo   = self.ctx.texture((self.width, self.height), 4, dtype="f1")
-        self.rmao     = self.ctx.texture((self.width, self.height), 4, dtype="f1")
+        self.rmaos     = self.ctx.texture((self.width, self.height), 4, dtype="f1")
 
         self.depth    = self.ctx.depth_texture((self.width, self.height))
 
         self.fbo = self.ctx.framebuffer(
-            color_attachments=[self.position, self.normal, self.albedo, self.rmao],
+            color_attachments=[self.position, self.normal, self.albedo, self.rmaos],
             depth_attachment=self.depth,
         )
 
@@ -45,7 +45,7 @@ class GBuffer:
             getattr(self, "position", None),
             getattr(self, "normal", None),
             getattr(self, "albedo", None),
-            getattr(self, "rmao", None),
+            getattr(self, "rmaos", None),
             getattr(self, "depth", None),
         ):
             if tex is not None:

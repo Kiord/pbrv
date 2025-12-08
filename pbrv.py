@@ -77,6 +77,7 @@ def main() -> None:
         metavar="VALUE_OR_PATH",
         help="Metalness scalar (0..1) OR metalness map path",
     )
+    
     parser.add_argument(
         "--ambient-occlusion",
         "-ao",
@@ -85,6 +86,21 @@ def main() -> None:
         metavar="PATH",
         help="Ambient occlusion map texture",
     )
+    parser.add_argument(
+        "--specular","-s",
+        dest='specular',
+        metavar="VALUE_OR_PATH",
+        help="Specular scalar (0..1) OR specular map path. /!\\ This corresponds to the \"specular\" artistic parameter of the Disney's BRDF that scales dielectric F0.",
+    )
+
+    parser.add_argument(
+        "--specular-tint","-st",
+        dest='specular_tint',
+        type=float,
+        default=0.0,
+        help="Specular tint scalar (0..1). /!\\ This corresponds to the \"specular tint\" artistic parameter of the Disney's BRDF that modulates the tint of F0.",
+    )
+
     parser.add_argument(
         "-ssao",
         "--use-ssao",
@@ -142,7 +158,7 @@ def main() -> None:
 
         roughness_vals, roughness_map = parse_value_or_path(
             args.roughness,
-            default_value=(0.3,),
+            default_value=(1.0,),
             valid_lengths=(1,),
             param_name="--roughness",
         )
@@ -155,6 +171,14 @@ def main() -> None:
             param_name="--metalness",
         )
         metalness_value = metalness_vals[0]
+
+        specular_vals, specular_map = parse_value_or_path(
+            args.specular,
+            default_value=(0.3,),
+            valid_lengths=(1,),
+            param_name="--specular",
+        )
+        specular_value = specular_vals[0]
 
     except ValueError as e:
         parser.error(str(e))
@@ -181,12 +205,15 @@ def main() -> None:
         normal_path=str(args.normal) if args.normal else None,
         roughness_path=str(roughness_map) if roughness_map else None,
         metalness_path=str(metalness_map) if metalness_map else None,
+        specular_path=str(specular_map) if specular_map else None,
         ambient_occlusion_path=str(args.ao) if args.ao else None,
     )
 
     material.albedo = albedo_color
     material.roughness = roughness_value
     material.metalness = metalness_value
+    material.specular = specular_value
+    material.specular_tint = args.specular_tint
 
     Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap)
     Viewer.use_ssao = args.use_ssao
@@ -194,7 +221,7 @@ def main() -> None:
     Viewer.exposure = args.exposure
 
     
-    sys.argv = sys.argv[:1]
+    sys.argv = sys.argv[:1] # To trick mgl-window if mw_args is empty
     run_window_config(Viewer, args=mw_args)
 
 

@@ -7,7 +7,7 @@ out vec4 fragColor;
 uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedo;
-uniform sampler2D gRMAO;
+uniform sampler2D gRMAOS;
 uniform sampler2D u_ssao;
 
 uniform bool u_use_env;
@@ -28,7 +28,12 @@ uniform mat4 u_invProj;
 
 uniform float u_time;
 
+uniform float u_specularTint = 0.0;
+
 const float GAMMA = 2.2;
+const vec3 LUMINANCE_PERCEPTION = vec3(0.2126, 0.7152, 0.0722);
+
+
 
 
 vec3 linear_to_srgb(vec3 x) {
@@ -197,7 +202,8 @@ vec3 evaluateDirectLightingBRDF(
     vec3 V,
     vec3 albedo,
     float roughness,
-    float metallic
+    float metallic,
+    vec3 F0
 ){
     vec3 L = normalize(u_lightPos - worldPos);
 
@@ -205,8 +211,7 @@ vec3 evaluateDirectLightingBRDF(
     float attenuation = 1.0 / (distance * distance);
     vec3 radiance     = u_lightColor * attenuation;
 
-    vec3 F0 = vec3(0.02);
-    F0 = mix(F0, albedo, metallic);
+    
 
     float NdotL = max(dot(N, L), 0.0);
 
@@ -224,16 +229,14 @@ vec3 evaluateIBLBRDF(
     vec3 albedo,
     float roughness,
     float metallic,
-    float ao
+    float ao,
+    vec3 F0
 ){
     if (!u_use_env) {
         return vec3(0.0);
     }
 
     float NdotV = max(dot(N, V), 0.0);
-
-    vec3 F0 = vec3(0.02);
-    F0 = mix(F0, albedo, metallic);
 
     vec3 F_ibl = fresnelSchlickRoughness(NdotV, F0, roughness);
 
@@ -271,11 +274,12 @@ void main()
 
     vec3 N      = texture(gNormal, v_uv).rgb;
     vec3 albedo = texture(gAlbedo, v_uv).rgb;
-    vec4 rmao   = texture(gRMAO, v_uv);
+    vec4 rmaos   = texture(gRMAOS, v_uv);
 
-    float roughness = clamp(rmao.r, 0.04, 1.0);
-    float metallic  = clamp(rmao.g, 0.0, 1.0);
-    float ao        = clamp(rmao.b, 0.0, 1.0);
+    float roughness = clamp(rmaos.r, 0.04, 1.0);
+    float metallic  = clamp(rmaos.g, 0.0, 1.0);
+    float specular  = clamp(rmaos.a, 0.0, 1.0);
+    float ao        = clamp(rmaos.b, 0.0, 1.0);
 
     N = normalize(N);
 
@@ -287,15 +291,20 @@ void main()
         ao = texture(u_ssao, v_uv).r;
     }
 
+    float luminance = dot(albedo, LUMINANCE_PERCEPTION);
+    vec3 Ctint = luminance > 0.0 ? albedo / luminance : vec3(1.0);
+    vec3 dielectricF0 =  0.08 * specular * mix(vec3(1.0), Ctint, u_specularTint);
+    vec3 F0 = mix(dielectricF0, albedo, metallic);
+
     vec3 Lo_direct = evaluateDirectLightingBRDF(
         worldPos, N, V,
-        albedo, roughness, metallic
+        albedo, roughness, metallic, F0
     );
 
     // -------- IBL (BRDF-based) --------
     vec3 Lo_ibl = evaluateIBLBRDF(
         N, V,
-        albedo, roughness, metallic, ao
+        albedo, roughness, metallic, ao, F0
     );
 
     vec3 color = Lo_direct + Lo_ibl;
@@ -303,4 +312,5 @@ void main()
     color = tonemap(color);
 
     fragColor = vec4(color, 1.0);
+    //fragColor.rgb = F0;
 }

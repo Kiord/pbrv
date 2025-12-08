@@ -10,7 +10,7 @@ class TexUnit:
     GBUFFER_POSITION = 0
     GBUFFER_NORMAL   = 1
     GBUFFER_ALBEDO   = 2
-    GBUFFER_RMAO     = 3
+    GBUFFER_RMAOS     = 3
 
     SSAO_NOISE       = 4
     SSAO             = 5
@@ -20,7 +20,8 @@ class TexUnit:
     NORMAL_MAP       = 8 
     ROUGHNESS_MAP    = 9
     METALNESS_MAP    = 10
-    AO_MAP           = 11
+    SPECULAR_MAP     = 11
+    AO_MAP           = 12
 
-    ENV_IRRADIANCE   = 12
-    ENV_SPECULAR     = 13
+    ENV_IRRADIANCE   = 13
+    ENV_SPECULAR     = 14

@@ -66,6 +66,7 @@ class Viewer(WindowConfig):
             self.ctx, 
             self.load_program, 
             self.scene.envmap,
+            self.scene.material.specular_tint,
             self.scene.point_light)
               
 

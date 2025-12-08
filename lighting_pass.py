@@ -16,6 +16,7 @@ class LightingPass(Pass):
         ctx: Context,
         load_program_fn,
         envmap:Optional[EnvMap],
+        specular_tint:float,
         point_light: Optional[PointLight] = None,
     ):
         super().__init__(ctx, load_program_fn)
@@ -29,6 +30,7 @@ class LightingPass(Pass):
             self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(env_tex, release=True)
 
         self.point_light = point_light or PointLight()
+        self.specular_tint = specular_tint
 
         self.prog: Optional[Program] = None
         self.vao: Optional[VertexArray] = None
@@ -48,7 +50,7 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "gPosition", TexUnit.GBUFFER_POSITION)
         safe_set_uniform(self.prog, "gNormal", TexUnit.GBUFFER_NORMAL)
         safe_set_uniform(self.prog, "gAlbedo", TexUnit.GBUFFER_ALBEDO)
-        safe_set_uniform(self.prog, "gRMAO", TexUnit.GBUFFER_RMAO)
+        safe_set_uniform(self.prog, "gRMAOS", TexUnit.GBUFFER_RMAOS)
         safe_set_uniform(self.prog, "u_ssao", TexUnit.SSAO_BLUR)
         safe_set_uniform(self.prog, "u_irradiance_env", TexUnit.ENV_IRRADIANCE)
         safe_set_uniform(self.prog, "u_specular_env", TexUnit.ENV_SPECULAR)
@@ -75,13 +77,14 @@ class LightingPass(Pass):
         gbuffer.position.use(location=TexUnit.GBUFFER_POSITION)
         gbuffer.normal.use(location=TexUnit.GBUFFER_NORMAL)
         gbuffer.albedo.use(location=TexUnit.GBUFFER_ALBEDO)
-        gbuffer.rmao.use(location=TexUnit.GBUFFER_RMAO)
+        gbuffer.rmaos.use(location=TexUnit.GBUFFER_RMAOS)
         ssao_tex.use(location=TexUnit.SSAO_BLUR)
 
         safe_set_uniform(self.prog, "u_use_ssao", bool(use_ssao))
         safe_set_uniform(self.prog, "u_viewPos", tuple(eye_pos))
         safe_set_uniform(self.prog, "u_lightPos", self.point_light.position)
         safe_set_uniform(self.prog, "u_lightColor", self.point_light.color)
+        safe_set_uniform(self.prog, "u_specularTint", self.specular_tint)
         tone_mapping_id = TONE_MAPPING_IDS.get(tone_mapping, 0)
         safe_set_uniform(self.prog, "u_tone_mapping_id", tone_mapping_id)
         safe_set_uniform(self.prog, "u_exposure", exposure)

@@ -11,7 +11,7 @@ in VS_OUT {
 layout(location = 0) out vec4 gPosition;    
 layout(location = 1) out vec4 gNormal;      
 layout(location = 2) out vec4 gAlbedo;      
-layout(location = 3) out vec4 gRMAO;    
+layout(location = 3) out vec4 gRMAOS;    
 
 uniform float u_time;
 
@@ -19,17 +19,22 @@ uniform vec3 u_albedo;
 uniform sampler2D u_albedo_map; 
 uniform bool u_use_albedo_map;
 
-uniform float u_roughness;
-uniform float u_metalness;
+
 
 uniform sampler2D u_normal_map;
 uniform bool      u_use_normal_map;
 
+uniform float u_roughness;
 uniform sampler2D u_roughness_map;
 uniform bool      u_use_roughness_map;
 
+uniform float u_metalness;
 uniform sampler2D u_metalness_map;
 uniform bool      u_use_metalness_map;
+
+uniform float u_specular;
+uniform sampler2D u_specular_map;
+uniform bool      u_use_specular_map;
 
 uniform sampler2D u_ao_map;
 uniform bool      u_use_ao_map;
@@ -61,17 +66,20 @@ void main() {
     }
     gAlbedo = vec4(albedo, 1.0);
 
-    // --- Roughness / metallic / AO packed into gRMAO ---
+    // --- Roughness / metallic / AO packed into gRMAOS ---
     float roughness   = u_roughness;
     float metalness = u_metalness;
+    float specular = u_specular;
     float ao          = 1.0;
 
     if (u_use_roughness_map)
         roughness = texture(u_roughness_map, fs_in.uv).r;
     if (u_use_metalness_map)
         metalness = texture(u_metalness_map, fs_in.uv).r;
+    if (u_use_specular_map)
+        specular = texture(u_specular_map, fs_in.uv).r;
     if (u_use_ao_map)
         ao = texture(u_ao_map, fs_in.uv).r;
 
-    gRMAO = vec4(roughness, metalness, ao, 1.0);
+    gRMAOS = vec4(roughness, metalness, ao, specular);
 }
