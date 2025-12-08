@@ -122,8 +122,22 @@ class Mesh:
         return t
 
     @classmethod
-    def from_path(cls, mesh_path: str):
-        mesh = tm.load_mesh(mesh_path)
+    def create_sphere(cls):
+        mesh = tm.creation.icosphere(subdivisions=3)
+        v = mesh.vertices.astype(np.float64)
+        x, y, z = v[:, 0], v[:, 1], v[:, 2]
+        r = np.linalg.norm(v, axis=1)
+        r[r == 0.0] = 1.0
+        xn, yn, zn = x / r, y / r, z / r
+        theta = np.arctan2(zn, xn)       
+        phi   = np.arccos(np.clip(yn, -1.0, 1.0))
+        u = (theta + np.pi) / (2.0 * np.pi)
+        v = phi / np.pi                    
+        uv = np.stack([u, v], axis=1)
+        mesh.visual.uv = uv
+        return Mesh.from_trimesh(cls, mesh)
+
+    def from_trimesh(cls, mesh:tm.Trimesh):
         bounds = mesh.bounds
         center = (bounds[0] + bounds[1]) / 2.0
         scale = 2.0 / np.max(bounds[1] - bounds[0])
@@ -147,6 +161,12 @@ class Mesh:
             tangents=tangents.astype("f4"),
             faces=faces.astype("i4"),
         )
+
+    @classmethod
+    def from_path(cls, mesh_path: str):
+        mesh = tm.load_mesh(mesh_path)
+        return Mesh.from_trimesh(cls, mesh)
+      
 
     def to_gl(self, ctx:Context):
         data = np.hstack([self.vertices, self.normals, self.uv, self.tangents]).astype("f4")

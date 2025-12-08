@@ -47,6 +47,7 @@ def main() -> None:
     parser.add_argument(
         "mesh_path",
         type=Path,
+        nargs='*',
         help="Mesh file (e.g. .obj, .glb, .ply)",
     )
 
@@ -101,8 +102,11 @@ def main() -> None:
 
     args, mw_args = parser.parse_known_args()
 
-    if not args.mesh_path.exists():
-        parser.error(f"Mesh path does not exist: {args.mesh_path}")
+    if len(args.mesh_path) > 1:
+         parser.error(f"Only one mesh path can be processed.")
+
+    if len(args.mesh_path) > 0 and not args.mesh_path[0].exists():
+        parser.error(f"Mesh path does not exist: {args.mesh_path[0]}")
     
     if args.use_ssao and args.ao is not None:
         print(f'[Warning] you enabled SSAO explicitely but you provided a ambient occlusion texture path ({args.ao}). SSAO will be used in favor of your texture.')
@@ -150,7 +154,10 @@ def main() -> None:
         cls = CubeMap if is_cubemap else Panorama
         envmap = cls.from_path(str(args.envmap_path))
 
-    mesh = Mesh.from_path(str(args.mesh_path))
+    if len(args.mesh_path) > 0:
+        mesh = Mesh.from_path(str(args.mesh_path))
+    else:
+        mesh = Mesh.create_sphere()
 
     material = Material.from_map_paths(
         albedo_path=str(albedo_map) if albedo_map else None,
