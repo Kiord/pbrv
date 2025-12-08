@@ -262,7 +262,7 @@ void main()
 {
     vec3 worldPos = texture(gPosition, v_uv).rgb;
     vec3 viewDir = get_world_dir_from_uv(v_uv);
-    if (worldPos.x == 100.0) {
+    if (worldPos.x > 1.1) {
         if (u_use_env){
             vec3 bg  = texture(u_specular_env, viewDir).rgb;
             bg = tonemap(bg);
