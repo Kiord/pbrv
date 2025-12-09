@@ -11,6 +11,7 @@ uniform sampler2D gRMAOS;
 uniform sampler2D u_ssao;
 
 uniform bool u_use_env;
+uniform samplerCube u_background_env;
 uniform samplerCube u_irradiance_env;
 uniform samplerCube u_specular_env;
 uniform int u_num_specular_mips;
@@ -243,7 +244,7 @@ vec3 evaluateIBLBRDF(
 
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
-    vec3 irradiance = texture(u_irradiance_env, N).rgb;
+    vec3 irradiance = texture(u_irradiance_env, N).rgb;// / PI;
     //vec3 irradiance = textureLod(u_specular_env, N, 9).rgb * PI;
     vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;// / PI;
 
@@ -266,7 +267,7 @@ void main()
     vec3 viewDir = get_world_dir_from_uv(v_uv);
     if (worldPos.x > 1.1) {
         if (u_use_env){
-            vec3 bg  = texture(u_specular_env, viewDir).rgb;
+            vec3 bg  = texture(u_background_env, viewDir).rgb;
             //vec3 bg  = texture(u_irradiance_env, viewDir).rgb / PI;
             //vec3 bg  = textureLod(u_specular_env, viewDir, 9*(0.5+0.5*sin(u_time))).rgb;
             bg = tonemap(bg);

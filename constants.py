@@ -11,7 +11,7 @@ class TexUnit:
     GBUFFER_POSITION = 0
     GBUFFER_NORMAL   = 1
     GBUFFER_ALBEDO   = 2
-    GBUFFER_RMAOS     = 3
+    GBUFFER_RMAOS    = 3
 
     SSAO_NOISE       = 4
     SSAO             = 5
@@ -24,5 +24,6 @@ class TexUnit:
     SPECULAR_MAP     = 11
     AO_MAP           = 12
 
-    ENV_IRRADIANCE   = 13
-    ENV_SPECULAR     = 14
+    ENV_BACKGROUND   = 13
+    ENV_IRRADIANCE   = 14
+    ENV_SPECULAR     = 15

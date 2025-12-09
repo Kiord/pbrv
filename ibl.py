@@ -8,8 +8,10 @@ from moderngl import Context, Texture, TextureCube, ComputeShader
 
 @dataclass
 class PrefilterSettings:
-    cube_size: int = 512
+    background_size: int = 1024
     num_mips: Optional[int] = None
+    
+    specular0_size: int = 512
     specular_sample_count: int = 1024
 
     irradiance_size: int = 32
@@ -47,17 +49,18 @@ class EnvironmentMapPrecomputer:
 
         return cube
 
-    def __call__(self, base_cube:Texture|TextureCube, 
+    def __call__(self, background_cube:Texture|TextureCube, 
                 settings: PrefilterSettings | None = None,
                 release=True):
         if settings is None:
             settings = PrefilterSettings()
-        size = settings.cube_size
+        spec0_size = settings.specular0_size
+        bkg_size = settings.background_size
 
         self._ensure_shaders()
 
-        if isinstance(base_cube, Texture):
-            base_cube = self.panorama_to_cubemap(base_cube, size, release)
+        if isinstance(background_cube, Texture):
+            background_cube = self.panorama_to_cubemap(background_cube, bkg_size, release)
 
 
         irr_size = settings.irradiance_size
@@ -73,7 +76,7 @@ class EnvironmentMapPrecomputer:
         irradiance_cube.repeat_y = True
 
         self._dispatch_irradiance(
-            src_env=base_cube,
+            src_env=background_cube,
             dst_irradiance=irradiance_cube,
             size=irr_size,
             sample_count=settings.irradiance_sample_count,
@@ -81,11 +84,11 @@ class EnvironmentMapPrecomputer:
 
         # Specular cube map
 
-        max_mips =  settings.num_mips or int(math.floor(math.log2(size))) + 1
+        max_mips =  settings.num_mips or int(math.floor(math.log2(spec0_size))) + 1
         max_mips = max(1, max_mips)
 
         specular_cube = self.ctx.texture_cube(
-            (size, size),
+            (spec0_size, spec0_size),
             components=4,
             dtype="f2",
         )
@@ -96,18 +99,17 @@ class EnvironmentMapPrecomputer:
         # specular_cube.repeat_y = True
 
         self._dispatch_specular_prefilter(
-            src_env=base_cube,
+            src_env=background_cube,
             dst_prefiltered=specular_cube,
-            size=size,
+            size=spec0_size,
             max_mips=max_mips,
             sample_count=settings.specular_sample_count,
         )
 
         self.ctx.finish()
-        if release:
-            base_cube.release()
+        
 
-        return irradiance_cube, specular_cube, max_mips
+        return background_cube, irradiance_cube, specular_cube, max_mips
 
 
     # ------------------------------------------------------------------ #

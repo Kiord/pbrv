@@ -21,13 +21,14 @@ class LightingPass(Pass):
     ):
         super().__init__(ctx, load_program_fn)
         
+        self.background_tex:Optional[TextureCube] = None
         self.irradiance_tex:Optional[TextureCube] = None
         self.specular_tex:Optional[TextureCube] = None
         self.num_specular_mips = 0
         if envmap is not None:
             precomp = EnvironmentMapPrecomputer(self.ctx)
             env_tex = envmap.to_gl(self.ctx)
-            self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(env_tex, release=True)
+            self.background_tex, self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(env_tex, release=True)
 
         self.point_light = point_light or PointLight()
         self.specular_tint = specular_tint
@@ -52,6 +53,7 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "gAlbedo", TexUnit.GBUFFER_ALBEDO)
         safe_set_uniform(self.prog, "gRMAOS", TexUnit.GBUFFER_RMAOS)
         safe_set_uniform(self.prog, "u_ssao", TexUnit.SSAO_BLUR)
+        safe_set_uniform(self.prog, "u_background_env", TexUnit.ENV_BACKGROUND)
         safe_set_uniform(self.prog, "u_irradiance_env", TexUnit.ENV_IRRADIANCE)
         safe_set_uniform(self.prog, "u_specular_env", TexUnit.ENV_SPECULAR)
 
@@ -95,6 +97,7 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "u_invProj", np.linalg.inv(proj_matrix).astype("f4"))
         safe_set_uniform(self.prog, "u_num_specular_mips", self.num_specular_mips)
         if use_env:
+            self.background_tex.use(location=TexUnit.ENV_BACKGROUND)
             self.irradiance_tex.use(location=TexUnit.ENV_IRRADIANCE)
             self.specular_tex.use(location=TexUnit.ENV_SPECULAR)
 
