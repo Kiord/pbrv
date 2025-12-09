@@ -3,6 +3,7 @@ from typing import Tuple, Optional
 import moderngl
 from moderngl import Context
 from utils import load_rgb_image_auto
+from constants import MAX_LUMINANCE
 
 import numpy as np
 import trimesh as tm
@@ -130,7 +131,7 @@ class Mesh:
 
     @classmethod
     def create_sphere(cls):
-        mesh = tm.creation.icosphere(subdivisions=3)
+        mesh = tm.creation.uv_sphere(radius=1.0)
         v = mesh.vertices.astype(np.float64)
         x, y, z = v[:, 0], v[:, 1], v[:, 2]
         r = np.linalg.norm(v, axis=1)
@@ -187,23 +188,20 @@ class Panorama:
     
     @classmethod
     def from_path(cls, image_path: str):
-        image, _ = load_rgb_image_auto(image_path) 
+        image, _ = load_rgb_image_auto(image_path, out_f='f2')
         return cls(image=image)
     
     def to_gl(self, ctx:Context):
-       
-        if self.image.dtype == np.uint8:
-            img_f = (self.image.astype("f4") / 255.0).astype("f2")
-        else:
-            img_f = self.image.astype("f2")
-
         h, w = self.image.shape[:2]
+        data = np.clip(self.image, 0.0, MAX_LUMINANCE)
         pano_tex = ctx.texture(
             (w, h),
             components=3,
-            data=img_f.tobytes(),
+            data=data.tobytes(),
             dtype="f2",
         )
+
+
         pano_tex.build_mipmaps()
         pano_tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
         pano_tex.repeat_x = True
@@ -222,12 +220,12 @@ class CubeMap:
     
     @classmethod
     def from_path(cls, cubemap_dir: str):
-        front, suffix = load_rgb_image_auto(cubemap_dir + os.sep + 'front') 
-        back, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'back', [suffix]) 
-        right, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'right', [suffix]) 
-        left, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'left', [suffix]) 
-        top, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'top', [suffix]) 
-        bottom, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'bottom', [suffix])
+        front, suffix = load_rgb_image_auto(cubemap_dir + os.sep + 'front', out_f='f2') 
+        back, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'back', [suffix], out_f='f2') 
+        right, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'right', [suffix], out_f='f2') 
+        left, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'left', [suffix], out_f='f2') 
+        top, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'top', [suffix], out_f='f2') 
+        bottom, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'bottom', [suffix], out_f='f2')
         return cls(front=front, back=back, right=right, left=left, top=top, bottom=bottom)
     
     def to_gl(self, ctx:Context):
@@ -248,20 +246,21 @@ class CubeMap:
 
         # Pack faces in +X, -X, +Y, -Y, +Z, -Z order
         data = np.concatenate(
-            [f.astype(np.uint8).reshape(-1, c) for f in faces],
+            [f.reshape(-1, c) for f in faces],
             axis=0,
         )
-
+        data = np.clip(data, 0.0, MAX_LUMINANCE)
+    
         cube_tex = ctx.texture_cube(
             (w, h),
             components=c,
-            data=data.tobytes(),
-            dtype="f1",  # normalized 0..1 from 8-bit
+            data=data.astype("f2").tobytes(),
+            dtype="f2", 
         )
-        cube_tex.build_mipmaps()
-        cube_tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
-        cube_tex.repeat_x = True
-        cube_tex.repeat_y = True
+        #cube_tex.build_mipmaps()
+        cube_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        # cube_tex.repeat_x = True
+        # cube_tex.repeat_y = True
         return cube_tex
 
 EnvMap = Panorama | CubeMap

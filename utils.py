@@ -2,6 +2,8 @@ from typing import Any, Callable, Optional, Sequence, Union
 from pathlib import Path
 from moderngl import Program, Context
 import numpy as np
+import os
+os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
 
 def safe_set_uniform(prog:Program, name: str, value: Any):
@@ -24,6 +26,7 @@ class Pass:
 def load_rgb_image_auto(
     base_path: Union[str, Path],
     ext_priority: Optional[Sequence[str]] = None,
+    out_f:Optional[str]=None
 ) -> np.ndarray:
     if ext_priority is None:
         ext_priority = [
@@ -87,5 +90,10 @@ def load_rgb_image_auto(
             raise ValueError(f"Unsupported channel count: {img.shape[2]}")
     else:
         raise ValueError(f"Unsupported image shape: {img.shape}")
+    
+    if out_f is not None:
+        if img.dtype == np.uint8:
+            img = img.astype("f4") / 255.0
+        img = img.astype(out_f)
 
     return img, suffix

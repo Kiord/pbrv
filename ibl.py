@@ -13,7 +13,7 @@ class PrefilterSettings:
     specular_sample_count: int = 1024
 
     irradiance_size: int = 32
-    irradiance_sample_count: int = 256
+    irradiance_sample_count: int = 1024*16
 
 
 class EnvironmentMapPrecomputer:
@@ -36,10 +36,10 @@ class EnvironmentMapPrecomputer:
             components=4,   # RGBA16F to match layout(rgba16f)
             dtype="f2",
         )
-        cube.build_mipmaps()
-        cube.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        cube.repeat_x = True
-        cube.repeat_y = True
+        # cube.build_mipmaps()
+        # cube.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        # cube.repeat_x = True
+        # cube.repeat_y = True
 
         self._dispatch_panorama_to_cubemap(panorama, cube, cube_size)
         if release:
@@ -92,8 +92,8 @@ class EnvironmentMapPrecomputer:
 
         specular_cube.build_mipmaps()
         specular_cube.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
-        specular_cube.repeat_x = True
-        specular_cube.repeat_y = True
+        # specular_cube.repeat_x = True
+        # specular_cube.repeat_y = True
 
         self._dispatch_specular_prefilter(
             src_env=base_cube,
@@ -487,271 +487,271 @@ void main() {
     imageStore(u_out_irradiance, ivec3(x, y, face), vec4(irradiance, 1.0));
 }
 """
-if __name__ == '__main__':
-    from pathlib import Path
-    import math
+# if __name__ == '__main__':
+#     from pathlib import Path
+#     import math
 
-    import numpy as np
-    from PIL import Image
-    import moderngl
+#     import numpy as np
+#     from PIL import Image
+#     import moderngl
 
-    cube_map_path = Path('resources/cubemaps/learnopengl')
-    face_names = ["right", "left", "top", "bottom", "front", "back"]
+#     cube_map_path = Path('resources/cubemaps/learnopengl')
+#     face_names = ["right", "left", "top", "bottom", "front", "back"]
 
-    # ------------------------------------------------------------------
-    # Utility: tonemap + debug print
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Utility: tonemap + debug print
+#     # ------------------------------------------------------------------
 
-    def _hdr_to_uint8(arr: np.ndarray, label: str) -> np.ndarray:
-        """
-        - Replace NaN / Inf
-        - Print min / max for debugging
-        - Normalize to [0, 1] so we can *see* something in PNG
-        - Apply simple gamma and convert to uint8
-        """
-        arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
+#     def _hdr_to_uint8(arr: np.ndarray, label: str) -> np.ndarray:
+#         """
+#         - Replace NaN / Inf
+#         - Print min / max for debugging
+#         - Normalize to [0, 1] so we can *see* something in PNG
+#         - Apply simple gamma and convert to uint8
+#         """
+#         arr = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
 
-        if arr.ndim == 3 and arr.shape[2] > 3:
-            arr = arr[..., :3]
+#         if arr.ndim == 3 and arr.shape[2] > 3:
+#             arr = arr[..., :3]
 
-        vmin = float(arr.min())
-        vmax = float(arr.max())
-        print(f"[{label}] range = {vmin:.6g} .. {vmax:.6g}")
+#         vmin = float(arr.min())
+#         vmax = float(arr.max())
+#         print(f"[{label}] range = {vmin:.6g} .. {vmax:.6g}")
 
-        # Avoid division by zero; if the tex is completely black, just return black
-        if vmax > 1e-8:
-            arr = arr / vmax
+#         # Avoid division by zero; if the tex is completely black, just return black
+#         if vmax > 1e-8:
+#             arr = arr / vmax
 
-        # Clamp + gamma to approximate sRGB
-        arr = np.clip(arr, 0.0, 1.0)
-        #arr = np.power(arr, 1.0 / 2.2)
+#         # Clamp + gamma to approximate sRGB
+#         arr = np.clip(arr, 0.0, 1.0)
+#         #arr = np.power(arr, 1.0 / 2.2)
         
 
-        img = (arr * 255.0 + 0.5).astype(np.uint8)
-        return img
+#         img = (arr * 255.0 + 0.5).astype(np.uint8)
+#         return img
 
-    # ------------------------------------------------------------------
-    # Load LearnOpenGL-style cubemap
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Load LearnOpenGL-style cubemap
+#     # ------------------------------------------------------------------
 
-    def load_learnopengl_cubemap(ctx: moderngl.Context, folder: Path) -> TextureCube:
-        exts = [".hdr", ".exr", ".png", ".jpg", ".jpeg"]
-        images = []
+#     def load_learnopengl_cubemap(ctx: moderngl.Context, folder: Path) -> TextureCube:
+#         exts = [".hdr", ".exr", ".png", ".jpg", ".jpeg"]
+#         images = []
 
-        for name in face_names:
-            path = None
-            for ext in exts:
-                candidate = folder / f"{name}{ext}"
-                if candidate.exists():
-                    path = candidate
-                    break
-            if path is None:
-                raise FileNotFoundError(
-                    f"Could not find face '{name}' in {folder} (tried {exts})"
-                )
+#         for name in face_names:
+#             path = None
+#             for ext in exts:
+#                 candidate = folder / f"{name}{ext}"
+#                 if candidate.exists():
+#                     path = candidate
+#                     break
+#             if path is None:
+#                 raise FileNotFoundError(
+#                     f"Could not find face '{name}' in {folder} (tried {exts})"
+#                 )
 
-            img = Image.open(path).convert("RGB")
-            arr = np.asarray(img, dtype=np.float32) / 255.0
-            images.append(arr)
+#             img = Image.open(path).convert("RGB")
+#             arr = np.asarray(img, dtype=np.float32) / 255.0
+#             images.append(arr)
 
-        h, w, c = images[0].shape
-        for name, arr in zip(face_names, images):
-            if arr.shape != images[0].shape:
-                raise ValueError(
-                    f"Face {name} has size {arr.shape}, expected {(h, w, c)}"
-                )
+#         h, w, c = images[0].shape
+#         for name, arr in zip(face_names, images):
+#             if arr.shape != images[0].shape:
+#                 raise ValueError(
+#                     f"Face {name} has size {arr.shape}, expected {(h, w, c)}"
+#                 )
 
-        cube = ctx.texture_cube((w, h), components=3, dtype="f2")
-        cube.repeat_x = True
-        cube.repeat_y = True
-        cube.filter = (moderngl.LINEAR, moderngl.LINEAR)
+#         cube = ctx.texture_cube((w, h), components=3, dtype="f2")
+#         cube.repeat_x = True
+#         cube.repeat_y = True
+#         cube.filter = (moderngl.LINEAR, moderngl.LINEAR)
 
-        for face_idx, arr in enumerate(images):
-            data = arr.astype("float16").tobytes()
-            cube.write(face=face_idx, data=data)
+#         for face_idx, arr in enumerate(images):
+#             data = arr.astype("float16").tobytes()
+#             cube.write(face=face_idx, data=data)
 
-        cube.build_mipmaps()
-        return cube
+#         cube.build_mipmaps()
+#         return cube
 
-    # ------------------------------------------------------------------
-    # Save one level of a cubemap
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Save one level of a cubemap
+#     # ------------------------------------------------------------------
 
-    def save_cubemap_level(
-        tex: TextureCube,
-        base_size: int,
-        level: int,
-        out_dir: Path,
-        label_prefix: str,
-    ) -> None:
-        out_dir.mkdir(parents=True, exist_ok=True)
+#     def save_cubemap_level(
+#         tex: TextureCube,
+#         base_size: int,
+#         level: int,
+#         out_dir: Path,
+#         label_prefix: str,
+#     ) -> None:
+#         out_dir.mkdir(parents=True, exist_ok=True)
 
-        size = max(1, base_size >> level)
-        w = h = size
+#         size = max(1, base_size >> level)
+#         w = h = size
 
-        for face_idx, name in enumerate(face_names):
-            raw = tex.read(face=face_idx, alignment=1)
-            arr = np.frombuffer(raw, dtype=np.float16).astype(np.float32)
-            arr = arr.reshape((h, w, tex.components))
+#         for face_idx, name in enumerate(face_names):
+#             raw = tex.read(face=face_idx, alignment=1)
+#             arr = np.frombuffer(raw, dtype=np.float16).astype(np.float32)
+#             arr = arr.reshape((h, w, tex.components))
 
-            img = _hdr_to_uint8(arr, f"{label_prefix}[level={level}, face={name}]")
-            Image.fromarray(img, mode="RGB").save(out_dir / f"{name}.png")
+#             img = _hdr_to_uint8(arr, f"{label_prefix}[level={level}, face={name}]")
+#             Image.fromarray(img, mode="RGB").save(out_dir / f"{name}.png")
 
-    # ------------------------------------------------------------------
-    # Save specular mips by sampling each LOD into a 2D texture
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Save specular mips by sampling each LOD into a 2D texture
+#     # ------------------------------------------------------------------
 
-    def save_specular_mips(
-        ctx: moderngl.Context,
-        tex: TextureCube,
-        base_size: int,
-        max_mips: int,
-        root_dir: Path,
-    ) -> None:
-        root_dir.mkdir(parents=True, exist_ok=True)
+#     def save_specular_mips(
+#         ctx: moderngl.Context,
+#         tex: TextureCube,
+#         base_size: int,
+#         max_mips: int,
+#         root_dir: Path,
+#     ) -> None:
+#         root_dir.mkdir(parents=True, exist_ok=True)
 
-        vs_src = """
-        #version 330
-        out vec2 v_uv;
-        const vec2 POS[3] = vec2[3](
-            vec2(-1.0, -1.0),
-            vec2( 3.0, -1.0),
-            vec2(-1.0,  3.0)
-        );
-        const vec2 UV[3] = vec2[3](
-            vec2(0.0, 0.0),
-            vec2(2.0, 0.0),
-            vec2(0.0, 2.0)
-        );
-        void main() {
-            gl_Position = vec4(POS[gl_VertexID], 0.0, 1.0);
-            v_uv = UV[gl_VertexID];
-        }
-        """
+#         vs_src = """
+#         #version 330
+#         out vec2 v_uv;
+#         const vec2 POS[3] = vec2[3](
+#             vec2(-1.0, -1.0),
+#             vec2( 3.0, -1.0),
+#             vec2(-1.0,  3.0)
+#         );
+#         const vec2 UV[3] = vec2[3](
+#             vec2(0.0, 0.0),
+#             vec2(2.0, 0.0),
+#             vec2(0.0, 2.0)
+#         );
+#         void main() {
+#             gl_Position = vec4(POS[gl_VertexID], 0.0, 1.0);
+#             v_uv = UV[gl_VertexID];
+#         }
+#         """
 
-        fs_src = """
-        #version 330
-        in vec2 v_uv;
-        out vec4 fragColor;
+#         fs_src = """
+#         #version 330
+#         in vec2 v_uv;
+#         out vec4 fragColor;
 
-        uniform samplerCube u_env;
-        uniform int u_face;
-        uniform float u_lod;
+#         uniform samplerCube u_env;
+#         uniform int u_face;
+#         uniform float u_lod;
 
-        vec3 face_uv_to_dir(uint face, vec2 uv) {
-            // uv in [0, 1]
-            vec2 st = uv * 2.0 - 1.0;   // [-1, 1]
-            float s = st.x;
-            float t = st.y;
+#         vec3 face_uv_to_dir(uint face, vec2 uv) {
+#             // uv in [0, 1]
+#             vec2 st = uv * 2.0 - 1.0;   // [-1, 1]
+#             float s = st.x;
+#             float t = st.y;
 
-            if (face == 0u) {          // +X (right)
-                return normalize(vec3( 1.0, -t, -s));
-            } else if (face == 1u) {   // -X (left)
-                return normalize(vec3(-1.0, -t,  s));
-            } else if (face == 2u) {   // +Y (top)
-                return normalize(vec3( s,  1.0,  t));
-            } else if (face == 3u) {   // -Y (bottom)
-                return normalize(vec3( s, -1.0, -t));
-            } else if (face == 4u) {   // +Z (front)
-                return normalize(vec3( s, -t,  1.0));
-            } else {                   // -Z (back)
-                return normalize(vec3(-s, -t, -1.0));
-            }
-        }
+#             if (face == 0u) {          // +X (right)
+#                 return normalize(vec3( 1.0, -t, -s));
+#             } else if (face == 1u) {   // -X (left)
+#                 return normalize(vec3(-1.0, -t,  s));
+#             } else if (face == 2u) {   // +Y (top)
+#                 return normalize(vec3( s,  1.0,  t));
+#             } else if (face == 3u) {   // -Y (bottom)
+#                 return normalize(vec3( s, -1.0, -t));
+#             } else if (face == 4u) {   // +Z (front)
+#                 return normalize(vec3( s, -t,  1.0));
+#             } else {                   // -Z (back)
+#                 return normalize(vec3(-s, -t, -1.0));
+#             }
+#         }
 
-        void main() {
-            vec2 uv = v_uv;
-            vec3 dir = face_uv_to_dir(uint(u_face), uv);
-            vec3 c = textureLod(u_env, dir, u_lod).rgb;
-            fragColor = vec4(c, 1.0);
-        }
-        """
+#         void main() {
+#             vec2 uv = v_uv;
+#             vec3 dir = face_uv_to_dir(uint(u_face), uv);
+#             vec3 c = textureLod(u_env, dir, u_lod).rgb;
+#             fragColor = vec4(c, 1.0);
+#         }
+#         """
 
-        prog = ctx.program(vertex_shader=vs_src, fragment_shader=fs_src)
-        vao = ctx.vertex_array(prog, [])
-        tex.use(location=0)
-        prog["u_env"].value = 0
+#         prog = ctx.program(vertex_shader=vs_src, fragment_shader=fs_src)
+#         vao = ctx.vertex_array(prog, [])
+#         tex.use(location=0)
+#         prog["u_env"].value = 0
 
-        for level in range(max_mips):
-            size = max(1, base_size >> level)
-            level_dir = root_dir / str(level)
-            level_dir.mkdir(parents=True, exist_ok=True)
+#         for level in range(max_mips):
+#             size = max(1, base_size >> level)
+#             level_dir = root_dir / str(level)
+#             level_dir.mkdir(parents=True, exist_ok=True)
 
-            rt_tex = ctx.texture((size, size), components=3, dtype="f2")
-            fbo = ctx.framebuffer(color_attachments=[rt_tex])
+#             rt_tex = ctx.texture((size, size), components=3, dtype="f2")
+#             fbo = ctx.framebuffer(color_attachments=[rt_tex])
 
-            for face_idx, name in enumerate(face_names):
-                fbo.use()
-                ctx.viewport = (0, 0, size, size)
-                ctx.disable(moderngl.DEPTH_TEST)
-                fbo.clear(0.0, 0.0, 0.0, 1.0)
+#             for face_idx, name in enumerate(face_names):
+#                 fbo.use()
+#                 ctx.viewport = (0, 0, size, size)
+#                 ctx.disable(moderngl.DEPTH_TEST)
+#                 fbo.clear(0.0, 0.0, 0.0, 1.0)
 
-                prog["u_face"].value = face_idx
-                prog["u_lod"].value = float(level)
+#                 prog["u_face"].value = face_idx
+#                 prog["u_lod"].value = float(level)
 
-                vao.render(mode=moderngl.TRIANGLES, vertices=3)
+#                 vao.render(mode=moderngl.TRIANGLES, vertices=3)
 
-                raw = rt_tex.read(alignment=1)
-                arr = np.frombuffer(raw, dtype=np.float16).astype(np.float32)
-                arr = arr.reshape((size, size, rt_tex.components))
+#                 raw = rt_tex.read(alignment=1)
+#                 arr = np.frombuffer(raw, dtype=np.float16).astype(np.float32)
+#                 arr = arr.reshape((size, size, rt_tex.components))
 
-                img = _hdr_to_uint8(arr, f"specular[level={level}, face={name}]")
-                Image.fromarray(img, mode="RGB").save(level_dir / f"{name}.png")
+#                 img = _hdr_to_uint8(arr, f"specular[level={level}, face={name}]")
+#                 Image.fromarray(img, mode="RGB").save(level_dir / f"{name}.png")
 
-            fbo.release()
-            rt_tex.release()
+#             fbo.release()
+#             rt_tex.release()
 
-    # ------------------------------------------------------------------
-    # Context + IBL compute
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Context + IBL compute
+#     # ------------------------------------------------------------------
 
-    ctx = moderngl.create_standalone_context(require=430)
+#     ctx = moderngl.create_standalone_context(require=430)
 
-    print(f"Loading base cubemap from: {cube_map_path}")
-    base_cube = load_learnopengl_cubemap(ctx, cube_map_path)
+#     print(f"Loading base cubemap from: {cube_map_path}")
+#     base_cube = load_learnopengl_cubemap(ctx, cube_map_path)
 
-    base_size = base_cube.size[0]
-    settings = PrefilterSettings(
-        cube_size=base_size,
-        num_mips=None,               # auto
-        specular_sample_count=256,
-        irradiance_size=32,
-        irradiance_sample_count=128,
-    )
+#     base_size = base_cube.size[0]
+#     settings = PrefilterSettings(
+#         cube_size=base_size,
+#         num_mips=None,               # auto
+#         specular_sample_count=256,
+#         irradiance_size=32,
+#         irradiance_sample_count=128,
+#     )
 
-    precomp = EnvironmentMapPrecomputer(ctx)
-    base, irradiance, specular = precomp.compute(base_cube, settings)
+#     precomp = EnvironmentMapPrecomputer(ctx)
+#     base, irradiance, specular = precomp.compute(base_cube, settings)
 
-    # ------------------------------------------------------------------
-    # Save base cubemap (to verify loading is OK)
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Save base cubemap (to verify loading is OK)
+#     # ------------------------------------------------------------------
 
-    base_dir = cube_map_path / "base"
-    print(f"Saving base cubemap to: {base_dir}")
-    save_cubemap_level(base, base_size, level=0, out_dir=base_dir, label_prefix="base")
+#     base_dir = cube_map_path / "base"
+#     print(f"Saving base cubemap to: {base_dir}")
+#     save_cubemap_level(base, base_size, level=0, out_dir=base_dir, label_prefix="base")
 
-    # ------------------------------------------------------------------
-    # Save irradiance cubemap (single level)
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Save irradiance cubemap (single level)
+#     # ------------------------------------------------------------------
 
-    irr_dir = cube_map_path / "irradiance"
-    print(f"Saving irradiance cubemap to: {irr_dir}")
-    save_cubemap_level(
-        irradiance,
-        settings.irradiance_size,
-        level=0,
-        out_dir=irr_dir,
-        label_prefix="irradiance",
-    )
+#     irr_dir = cube_map_path / "irradiance"
+#     print(f"Saving irradiance cubemap to: {irr_dir}")
+#     save_cubemap_level(
+#         irradiance,
+#         settings.irradiance_size,
+#         level=0,
+#         out_dir=irr_dir,
+#         label_prefix="irradiance",
+#     )
 
-    # ------------------------------------------------------------------
-    # Save specular prefiltered cubemap mips
-    # ------------------------------------------------------------------
+#     # ------------------------------------------------------------------
+#     # Save specular prefiltered cubemap mips
+#     # ------------------------------------------------------------------
 
-    spec_dir = cube_map_path / "specular"
-    max_mips = settings.num_mips or int(math.floor(math.log2(base_size))) + 1
-    print(f"Saving specular prefiltered cubemap mips to: {spec_dir}")
-    print(f"Specular base size: {base_size}, mips: {max_mips}")
-    save_specular_mips(ctx, specular, base_size, max_mips, spec_dir)
+#     spec_dir = cube_map_path / "specular"
+#     max_mips = settings.num_mips or int(math.floor(math.log2(base_size))) + 1
+#     print(f"Saving specular prefiltered cubemap mips to: {spec_dir}")
+#     print(f"Specular base size: {base_size}, mips: {max_mips}")
+#     save_specular_mips(ctx, specular, base_size, max_mips, spec_dir)
 
-    print("Done.")
+#     print("Done.")

@@ -101,6 +101,7 @@ vec3 tonemap_aces_srgb(vec3 hdr, float exposure) {
 }
 
 vec3 tonemap(vec3 col){
+    col = min(col, vec3(100));
     if (u_tone_mapping_id == 0)
         return tonemap_exposure_srgb(col, u_exposure);
     if (u_tone_mapping_id == 1)
@@ -243,6 +244,7 @@ vec3 evaluateIBLBRDF(
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
     vec3 irradiance = texture(u_irradiance_env, N).rgb;
+    //vec3 irradiance = textureLod(u_specular_env, N, 9).rgb * PI;
     vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;// / PI;
 
     vec3 R = reflect(-V, N);
@@ -265,13 +267,15 @@ void main()
     if (worldPos.x > 1.1) {
         if (u_use_env){
             vec3 bg  = texture(u_specular_env, viewDir).rgb;
+            //vec3 bg  = texture(u_irradiance_env, viewDir).rgb / PI;
+            //vec3 bg  = textureLod(u_specular_env, viewDir, 9*(0.5+0.5*sin(u_time))).rgb;
             bg = tonemap(bg);
             fragColor = vec4(bg, 1.0);
         }
         return;
     }
 
-    vec3 N      = texture(gNormal, v_uv).rgb;
+    vec3 N      = normalize(texture(gNormal, v_uv).rgb);
     vec3 albedo = texture(gAlbedo, v_uv).rgb;
     vec4 rmaos   = texture(gRMAOS, v_uv);
 
@@ -307,7 +311,7 @@ void main()
     );
 
     vec3 color = Lo_direct + Lo_ibl;
-
+    
     color = tonemap(color);
 
     fragColor = vec4(color, 1.0);
