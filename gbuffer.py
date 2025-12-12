@@ -28,7 +28,7 @@ class GBuffer:
         self.position = self.ctx.texture((self.width, self.height), 4, dtype="f2")
         self.normal   = self.ctx.texture((self.width, self.height), 4, dtype="f2")
         self.albedo   = self.ctx.texture((self.width, self.height), 4, dtype="f1")
-        self.rmaos     = self.ctx.texture((self.width, self.height), 4, dtype="f1")
+        self.rmaos    = self.ctx.texture((self.width, self.height), 4, dtype="f1")
 
         self.depth    = self.ctx.depth_texture((self.width, self.height))
 
@@ -87,7 +87,7 @@ class GBuffer:
 
         world_pos = pos[:3].astype(np.float32)
 
-        if np.allclose(world_pos, 0.0, atol=EPSILON):
+        if np.any(world_pos>1.1):
             return None
 
         return world_pos
