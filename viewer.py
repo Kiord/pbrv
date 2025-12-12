@@ -9,6 +9,7 @@ from gbuffer import GBuffer
 from geometry_pass import GeometryPass
 from lighting_pass import LightingPass
 
+from input_gestures import CameraInputController
 
 class Viewer(WindowConfig):
     title = "pbrv"
@@ -35,16 +36,12 @@ class Viewer(WindowConfig):
             exit(2)
 
         # Camera / Interaction
-        self.os_mouse = OSMouse(self.wnd)
+        
         self.camera = TrackballCamera(aspect=self.wnd.aspect_ratio)
 
         self.model = matrix44.create_identity()
-        self.wnd.backend
-        self.zoom_sensitivity = 0.2
 
-        self._drag_mode = None  # 'rotate' or 'pan'
-        self._last_click_time = 0.0
-        self._double_click_max_delay = 0.3  # seconds
+        self.input = CameraInputController(self.wnd, self.camera)
         
         # --- mesh ---
         self.vbo, self.ibo = self.scene.mesh.to_gl(self.ctx)
@@ -90,43 +87,16 @@ class Viewer(WindowConfig):
     # Mouse / camera
     # -------------------------------------------------------------------------
     def on_mouse_press_event(self, x, y, button):
-        if button == self.wnd.mouse.left:
-            now = time.perf_counter()
-            dt = now - self._last_click_time
-
-            is_double = dt <= self._double_click_max_delay
-
-            if is_double:
-                picked_pos = self.gbuffer.sample_world_position(x, y)
-                if picked_pos is not None:
-                    self.camera.set_pivot(picked_pos)
-                    self.os_mouse.center()
-            else:
-                self._drag_mode = 'rotate'
-                w, h = self.wnd.size
-                self.camera.begin_rotate(x, y, w, h)
-
-            self._last_click_time = now
-
-        if button == self.wnd.mouse.right:
-            self._drag_mode = 'pan'
+        self.input.on_press(x, y, self.gbuffer, button)
 
     def on_mouse_drag_event(self, x, y, dx, dy):
-        w, h = self.wnd.size
-        if self._drag_mode == 'rotate':
-            self.camera.rotate(x, y, w, h)
-        elif self._drag_mode == 'pan':
-            self.camera.pan(dx, dy, w, h)
+        self.input.on_drag(x, y, dx, dy)
 
     def on_mouse_release_event(self, x, y, button):
-        if button == self.wnd.mouse.left and self._drag_mode == 'rotate':
-            self.camera.end_rotate()
-        if button == self.wnd.mouse.right and self._drag_mode == 'pan':
-            pass
-        self._drag_mode = None
+        self.input.on_release(x, y, button)
 
     def on_mouse_scroll_event(self, x_offset, y_offset):
-        self.camera.zoom(y_offset * self.zoom_sensitivity)
+        self.input.on_scroll(y_offset)
 
     def on_key_event(self, key, action, modifiers):
         if key == self.wnd.keys.F5 and action == self.wnd.keys.ACTION_PRESS:
