@@ -94,6 +94,7 @@ class Viewer(WindowConfig):
         self.input.on_scroll(y_offset)
 
     def on_key_event(self, key, action, modifiers):
+        self.input.on_key_event(key, action, modifiers)
         if key == self.wnd.keys.F5 and action == self.wnd.keys.ACTION_PRESS:
             self.reload_shaders()
 
@@ -120,6 +121,7 @@ class Viewer(WindowConfig):
             view, 
             proj,
             self.input.env_matrix,
+            self.input.lod_factor,
             self.use_ssao,
             self.tone_mapping,
             self.exposure,

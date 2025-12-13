@@ -83,10 +83,24 @@ class LeftClickGesture:
 
 
 
-class RotatorType(Enum):
+class Mode(Enum):
     CAMERA = auto()
     MODEL = auto()
     ENV = auto()
+    NONE = auto()
+
+class Modifiers:
+    __slots__ = ("shift", "ctrl", "alt")
+
+    def __init__(self):
+        self.shift = False
+        self.ctrl = False
+        self.alt = False
+
+    def set_from(self, mods) -> None:
+        self.shift = bool(getattr(mods, "shift", self.shift))
+        self.ctrl  = bool(getattr(mods, "ctrl",  self.ctrl))
+        self.alt   = bool(getattr(mods, "alt",   self.alt))
 
 class CameraInputController:
 
@@ -116,37 +130,41 @@ class CameraInputController:
         self.model_matrix = M.create_identity(dtype=np.float32)
         self.env_matrix = M.create_identity(dtype=np.float32)
 
-        self._active = RotatorType.CAMERA 
+        self._active = Mode.CAMERA 
         self._base_quat = np.array([0, 0, 0, 1], dtype=np.float32)
+
+        self.lod_factor = 0
+        self._lod_factor_speed = 0.01
 
         self._sample_world_position = sample_world_position
 
         self.left = LeftClickGesture(double_delay=double_click_delay)
 
+        self.modifiers = Modifiers()
+
     def _choose_active(self) -> str:
-        if self.wnd.modifiers.ctrl:
-            return  RotatorType.MODEL
-        if self.wnd.modifiers.shift:
-            return RotatorType.ENV
-        return RotatorType.CAMERA
+        if self.modifiers.ctrl:
+            return  Mode.MODEL
+        if self.modifiers.shift:
+            return Mode.ENV
+        return Mode.CAMERA
 
     def on_press(self, x: int, y: int, button) -> None:
         w, h = self.wnd.size
-
         if button == self.wnd.mouse.left:
             self._active = self._choose_active()
 
-            if self._active == RotatorType.MODEL:
+            if self._active == Mode.MODEL:
                 self._base_quat = self.model_quat.copy()
                 self._model_tb.reset_rotation()
-            elif self._active == RotatorType.ENV:
+            elif self._active == Mode.ENV:
                 self._base_quat = self.env_quat.copy()
                 self._env_tb.reset_rotation()
 
             can_arm_double = self._is_object(x, y)
             if self.left.on_press(x, y, w, h, can_arm_double):
                 self.left.cancel_rotate()
-                self._active = RotatorType.CAMERA
+                self._active = Mode.CAMERA
                 self._on_double_click(x, y)
             return
 
@@ -162,18 +180,18 @@ class CameraInputController:
             self.camera.pan(dx, dy, w, h)
             return
 
-        if self._active == RotatorType.CAMERA:
+        if self._active == Mode.CAMERA:
             self.left.on_drag(self.camera, x, y, w, h)
             return
         
-        tb = self._model_tb if self._active == RotatorType.MODEL else self._env_tb
+        tb = self._model_tb if self._active == Mode.MODEL else self._env_tb
         self.left.on_drag(tb, x, y, w, h)
 
         q_cam = self.camera.get_quat()
         q_cam_conj = Q.conjugate(q_cam)
         q_world_delta = Q.cross(q_cam, Q.cross(tb.get_quat(), q_cam_conj))
 
-        if self._active == RotatorType.MODEL:
+        if self._active == Mode.MODEL:
             # local/object feel
             self.model_quat = Q.normalize(Q.cross(self._base_quat, q_world_delta))
             self.model_matrix = M.create_from_quaternion(self.model_quat)
@@ -184,13 +202,13 @@ class CameraInputController:
 
     def on_release(self, x: int, y: int, button) -> None:
         if button == self.wnd.mouse.left:
-            if self._active == RotatorType.CAMERA:
+            if self._active == Mode.CAMERA:
                 self.left.on_release(self.camera)
-            elif self._active == RotatorType.MODEL:
+            elif self._active == Mode.MODEL:
                 self.left.on_release(self._model_tb)
             else:
                 self.left.on_release(self._env_tb)
-            self._active = RotatorType.CAMERA
+            self._active = Mode.CAMERA
             return
 
         if button == self.wnd.mouse.right:
@@ -198,7 +216,11 @@ class CameraInputController:
             return
 
     def on_scroll(self, y_offset: float) -> None:
-        self.camera.zoom(y_offset * self.zoom_sensitivity)
+        if self.modifiers.shift:
+            self.lod_factor += y_offset * self._lod_factor_speed
+            self.lod_factor = min(1, max(0, self.lod_factor))
+        else:
+            self.camera.zoom(y_offset * self.zoom_sensitivity)
 
     
     def _on_double_click(self, x: int, y: int):
@@ -213,3 +235,6 @@ class CameraInputController:
         if self._sample_world_position is None:
             return None
         return self._sample_world_position(x, y) is not None
+    
+    def on_key_event(self, key, action, modifiers):
+        self.modifiers.set_from(modifiers)

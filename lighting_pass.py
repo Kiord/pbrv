@@ -65,6 +65,7 @@ class LightingPass(Pass):
         view_matrix: np.ndarray,
         proj_matrix: np.ndarray,
         env_matrix:np.ndarray,
+        env_lod_factor:float,
         use_ssao: bool,
         tone_mapping: str,
         exposure: float,
@@ -98,6 +99,7 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "u_invProj", np.linalg.inv(proj_matrix).astype("f4"))
         safe_set_uniform(self.prog, "u_envRotation", env_matrix[:3, :3].astype("f4"))
         safe_set_uniform(self.prog, "u_num_specular_mips", self.num_specular_mips)
+        safe_set_uniform(self.prog, "u_env_lod", self.num_specular_mips * env_lod_factor)
         if use_env:
             self.background_tex.use(location=TexUnit.ENV_BACKGROUND)
             self.irradiance_tex.use(location=TexUnit.ENV_IRRADIANCE)

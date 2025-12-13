@@ -14,6 +14,7 @@ uniform bool u_use_env;
 uniform samplerCube u_background_env;
 uniform samplerCube u_irradiance_env;
 uniform samplerCube u_specular_env;
+uniform float u_env_lod;
 uniform int u_num_specular_mips;
 
 uniform int u_tone_mapping_id;
@@ -274,9 +275,14 @@ void main()
     vec3 viewDir = get_world_dir_from_uv(v_uv);
     if (worldPos.x > 2.0) {
         if (u_use_env){
-            vec3 bg  = texture(u_background_env, envSamplingDirection(viewDir)).rgb;
-            //vec3 bg  = texture(u_irradiance_env, viewDir).rgb / PI;
-            //vec3 bg  = textureLod(u_specular_env, viewDir, 4).rgb;
+            vec3 bg = vec3(0.0);
+            viewDir = envSamplingDirection(viewDir);
+            if (u_env_lod == 0.0)
+                bg  = texture(u_background_env, viewDir).rgb;
+            else if (u_env_lod == u_num_specular_mips)
+                bg =  texture(u_irradiance_env, viewDir).rgb / PI;
+            else
+                bg = textureLod(u_specular_env, viewDir, u_env_lod).rgb;
             bg = tonemap(bg);
             fragColor = vec4(bg, 1.0);
         }
