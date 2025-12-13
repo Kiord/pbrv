@@ -14,7 +14,8 @@ class Trackball:
         get_matrix() -> Matrix44
     """
 
-    def __init__(self, ball_size: float = 0.8):
+    def __init__(self, ball_size: float = 0.8, **kwargs):
+        super().__init__(**kwargs)
         self._quat = quaternion.create(dtype=np.float32)
         self._start_quat = quaternion.create(dtype=np.float32)
 
