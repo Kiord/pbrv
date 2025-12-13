@@ -8,6 +8,7 @@ uniform sampler2D gPosition;
 uniform sampler2D gNormal;
 uniform sampler2D gAlbedo;
 uniform sampler2D gRMAOS;
+uniform sampler2D gEmissive;
 uniform sampler2D u_ssao;
 
 uniform bool u_use_env;
@@ -326,7 +327,9 @@ void main()
     );
 
     vec3 color = Lo_direct + Lo_ibl;
-    
+
+    color += texture(gEmissive, v_uv).rgb;
+
     color = tonemap(color);
 
     fragColor = vec4(color,1.0);

@@ -12,6 +12,7 @@ layout(location = 0) out vec4 gPosition;
 layout(location = 1) out vec4 gNormal;      
 layout(location = 2) out vec4 gAlbedo;      
 layout(location = 3) out vec4 gRMAOS;    
+layout(location = 4) out vec4 gEmissive;    
 
 uniform float u_time;
 
@@ -31,6 +32,10 @@ uniform bool      u_use_roughness_map;
 uniform float u_metalness;
 uniform sampler2D u_metalness_map;
 uniform bool      u_use_metalness_map;
+
+uniform vec3 u_emissive;
+uniform sampler2D u_emissive_map;
+uniform bool      u_use_emissive_map;
 
 uniform float u_specular;
 uniform sampler2D u_specular_map;
@@ -69,6 +74,7 @@ void main() {
     // --- Roughness / metallic / AO packed into gRMAOS ---
     float roughness   = u_roughness;
     float metalness = u_metalness;
+    vec3 emissive = u_emissive;
     float specular = u_specular;
     float ao          = 1.0;
 
@@ -82,4 +88,9 @@ void main() {
         ao = texture(u_ao_map, fs_in.uv).r;
 
     gRMAOS = vec4(roughness, metalness, ao, specular);
+
+    if (u_use_emissive_map)
+        emissive = texture(u_emissive_map, fs_in.uv).rgb;
+    gEmissive = vec4(emissive, 1);
+
 }

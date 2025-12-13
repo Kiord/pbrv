@@ -40,6 +40,7 @@ class GeometryPass(Pass):
         self.normal_tex = None
         self.roughness_tex = None
         self.metalness_tex = None
+        self.emissive_tex = None
         self.specular_tex = None
         self.ao_tex = None
 
@@ -47,6 +48,7 @@ class GeometryPass(Pass):
         self.use_normal_tex = False
         self.use_roughness_tex = False
         self.use_metalness_tex = False
+        self.use_emissive_tex = False
         self.use_specular_tex = False
         self.use_ao_tex = False 
 
@@ -85,6 +87,7 @@ class GeometryPass(Pass):
         safe_set_uniform(self.prog, "u_normal_map", TexUnit.NORMAL_MAP)
         safe_set_uniform(self.prog, "u_roughness_map", TexUnit.ROUGHNESS_MAP)
         safe_set_uniform(self.prog, "u_metalness_map", TexUnit.METALNESS_MAP)
+        safe_set_uniform(self.prog, "u_emissive_map", TexUnit.EMISSIVE_MAP)
         safe_set_uniform(self.prog, "u_specular_map", TexUnit.SPECULAR_MAP)
         safe_set_uniform(self.prog, "u_ao_map", TexUnit.AO_MAP)
 
@@ -96,6 +99,7 @@ class GeometryPass(Pass):
         self.normal_tex, self.use_normal_tex = self._make_texture2d(mat.normal_map, 3)
         self.roughness_tex, self.use_roughness_tex = self._make_texture2d(mat.roughness_map, 1)
         self.metalness_tex, self.use_metalness_tex = self._make_texture2d(mat.metalness_map, 1)
+        self.emissive_tex, self.use_emissive_tex = self._make_texture2d(mat.emissive_map, 3)
         self.specular_tex, self.use_specular_tex = self._make_texture2d(mat.specular_map, 1)
         self.ao_tex, self.use_ao_tex = self._make_texture2d(mat.ambient_occlusion_map, 1)
 
@@ -130,11 +134,12 @@ class GeometryPass(Pass):
         safe_set_uniform(self.prog, "u_use_normal_map", self.use_normal_tex)
         safe_set_uniform(self.prog, "u_use_roughness_map", self.use_roughness_tex)
         safe_set_uniform(self.prog, "u_use_metalness_map", self.use_metalness_tex)
+        safe_set_uniform(self.prog, "u_use_emissive_map", self.use_emissive_tex)
         safe_set_uniform(self.prog, "u_use_specular_map", self.use_specular_tex)
         safe_set_uniform(self.prog, "u_use_ao_map", self.use_ao_tex)
         safe_set_uniform(self.prog, "u_albedo", self.scene.material.albedo)
         safe_set_uniform(self.prog, "u_roughness", self.scene.material.roughness)
-        safe_set_uniform(self.prog, "u_metalness", self.scene.material.metalness)
+        safe_set_uniform(self.prog, "u_emissive", self.scene.material.emissive)
         safe_set_uniform(self.prog, "u_specular", self.scene.material.specular)
 
 
@@ -164,6 +169,7 @@ class GeometryPass(Pass):
         self.normal_tex.use(location=TexUnit.NORMAL_MAP)
         self.roughness_tex.use(location=TexUnit.ROUGHNESS_MAP)
         self.metalness_tex.use(location=TexUnit.METALNESS_MAP)
+        self.emissive_tex.use(location=TexUnit.EMISSIVE_MAP)
         self.specular_tex.use(location=TexUnit.SPECULAR_MAP)
         self.ao_tex.use(location=TexUnit.AO_MAP)
 

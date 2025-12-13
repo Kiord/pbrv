@@ -52,6 +52,7 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "gNormal", TexUnit.GBUFFER_NORMAL)
         safe_set_uniform(self.prog, "gAlbedo", TexUnit.GBUFFER_ALBEDO)
         safe_set_uniform(self.prog, "gRMAOS", TexUnit.GBUFFER_RMAOS)
+        safe_set_uniform(self.prog, "gEmissive", TexUnit.GBUFFER_EMISSIVE)
         safe_set_uniform(self.prog, "u_ssao", TexUnit.SSAO_BLUR)
         safe_set_uniform(self.prog, "u_background_env", TexUnit.ENV_BACKGROUND)
         safe_set_uniform(self.prog, "u_irradiance_env", TexUnit.ENV_IRRADIANCE)
@@ -82,6 +83,7 @@ class LightingPass(Pass):
         gbuffer.normal.use(location=TexUnit.GBUFFER_NORMAL)
         gbuffer.albedo.use(location=TexUnit.GBUFFER_ALBEDO)
         gbuffer.rmaos.use(location=TexUnit.GBUFFER_RMAOS)
+        gbuffer.emissive.use(location=TexUnit.GBUFFER_EMISSIVE)
         ssao_tex.use(location=TexUnit.SSAO_BLUR)
 
         safe_set_uniform(self.prog, "u_use_ssao", bool(use_ssao))

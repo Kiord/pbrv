@@ -12,18 +12,20 @@ class TexUnit:
     GBUFFER_NORMAL   = 1
     GBUFFER_ALBEDO   = 2
     GBUFFER_RMAOS    = 3
+    GBUFFER_EMISSIVE = 4
 
-    SSAO_NOISE       = 4
-    SSAO             = 5
-    SSAO_BLUR        = 6
+    SSAO_NOISE       = 5
+    SSAO             = 6
+    SSAO_BLUR        = 7
 
-    ALBEDO_MAP       = 7
-    NORMAL_MAP       = 8 
-    ROUGHNESS_MAP    = 9
-    METALNESS_MAP    = 10
-    SPECULAR_MAP     = 11
-    AO_MAP           = 12
+    ALBEDO_MAP       = 8
+    NORMAL_MAP       = 9
+    ROUGHNESS_MAP    = 10
+    METALNESS_MAP    = 11
+    EMISSIVE_MAP     = 12
+    SPECULAR_MAP     = 13
+    AO_MAP           = 14
 
-    ENV_BACKGROUND   = 13
-    ENV_IRRADIANCE   = 14
-    ENV_SPECULAR     = 15
+    ENV_BACKGROUND   = 15
+    ENV_IRRADIANCE   = 16
+    ENV_SPECULAR     = 17

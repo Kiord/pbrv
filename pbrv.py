@@ -86,6 +86,15 @@ def main() -> None:
         metavar="PATH",
         help="Ambient occlusion map texture",
     )
+
+    parser.add_argument(
+        "--emissive",
+        "-e",
+        dest='emissive',
+        metavar="VALUE_OR_PATH",
+        help="Albedo map path OR 'r,g,b' (or single scalar)",
+    )
+
     parser.add_argument(
         "--specular","-s",
         dest='specular',
@@ -126,7 +135,7 @@ def main() -> None:
     )
 
     parser.add_argument(
-        "--exposure", '-exp', '-e',
+        "--exposure", '-exp',
         dest="exposure",
         type=float,
         default=1.0,
@@ -172,6 +181,14 @@ def main() -> None:
         )
         metalness_value = metalness_vals[0]
 
+        emissive_vals, emissive_map = parse_value_or_path(
+            args.emissive,
+            default_value=(0.0, 0.0, 0.0),
+            valid_lengths=(1, 3),
+            param_name="--emissive",
+        )
+        emissive_value = emissive_vals
+
         specular_vals, specular_map = parse_value_or_path(
             args.specular,
             default_value=(0.3,),
@@ -205,6 +222,7 @@ def main() -> None:
         normal_path=str(args.normal) if args.normal else None,
         roughness_path=str(roughness_map) if roughness_map else None,
         metalness_path=str(metalness_map) if metalness_map else None,
+        emissive_path=str(emissive_map) if emissive_map else None,
         specular_path=str(specular_map) if specular_map else None,
         ambient_occlusion_path=str(args.ao) if args.ao else None,
     )
@@ -212,6 +230,7 @@ def main() -> None:
     material.albedo = albedo_color
     material.roughness = roughness_value
     material.metalness = metalness_value
+    material.emissive = emissive_value
     material.specular = specular_value
     material.specular_tint = args.specular_tint
 

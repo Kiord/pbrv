@@ -131,15 +131,16 @@ class Viewer(WindowConfig):
 
 
 if __name__ == '__main__':
-    mesh = Mesh.from_path('resources/meshes/lantern.obj')
+    mesh = Mesh.from_path('resources/meshes/helmet.obj')
     material = Material.from_map_paths(
-        albedo_path='resources/textures/lantern_a.jpg',
-        normal_path='resources/textures/lantern_n.jpg',
-        roughness_path='resources/textures/lantern_r.jpg',
-        metalness_path='resources/textures/lantern_m.jpg',
-        ambient_occlusion_path='resources/textures/lantern_ao.jpg',
+        albedo_path='resources/textures/helmet_a.jpg',
+        normal_path='resources/textures/helmet_n.jpg',
+        roughness_path='resources/textures/helmet_r.jpg',
+        metalness_path='resources/textures/helmet_m.jpg',
+        emissive_path='resources/textures/helmet_e.jpg',
+        ambient_occlusion_path='resources/textures/helmet_ao.jpg',
     )
-    envmap = Panorama.from_path('resources/panoramas/hangar1.jpg')
+    envmap = Panorama.from_path('resources/panoramas/forest2.exr')
 
     point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
 
