@@ -1,8 +1,5 @@
 from moderngl_window import WindowConfig, run_window_config
-from pyrr import matrix44
 from camera import TrackballCamera
-from mouse import OSMouse
-import time
 from scene import Scene, Mesh, Material, Panorama
 from ssao import SSAOPass
 from gbuffer import GBuffer
@@ -34,14 +31,6 @@ class Viewer(WindowConfig):
         if self.scene is None:
             print('ERROR: No scene found. Exiting.')
             exit(2)
-
-        # Camera / Interaction
-        
-        self.camera = TrackballCamera(aspect=self.wnd.aspect_ratio)
-
-        self.model = matrix44.create_identity()
-
-        self.input = CameraInputController(self.wnd, self.camera)
         
         # --- mesh ---
         self.vbo, self.ibo = self.scene.mesh.to_gl(self.ctx)
@@ -65,7 +54,13 @@ class Viewer(WindowConfig):
             self.scene.envmap,
             self.scene.material.specular_tint,
             self.scene.point_light)
-              
+            
+        # Camera / Interaction
+        
+        self.camera = TrackballCamera(aspect=self.wnd.aspect_ratio)
+        
+        self.input = CameraInputController(self.wnd, self.camera, 
+                                           sample_world_position=self.gbuffer.sample_world_position)
 
     def reload_shaders(self):
         self.geometry_pass.reload_shaders()
@@ -87,7 +82,7 @@ class Viewer(WindowConfig):
     # Mouse / camera
     # -------------------------------------------------------------------------
     def on_mouse_press_event(self, x, y, button):
-        self.input.on_press(x, y, self.gbuffer, button)
+        self.input.on_press(x, y, button)
 
     def on_mouse_drag_event(self, x, y, dx, dy):
         self.input.on_drag(x, y, dx, dy)
@@ -101,7 +96,7 @@ class Viewer(WindowConfig):
     def on_key_event(self, key, action, modifiers):
         if key == self.wnd.keys.F5 and action == self.wnd.keys.ACTION_PRESS:
             self.reload_shaders()
-    
+
     # -------------------------------------------------------------------------
     # Render
     # -------------------------------------------------------------------------
@@ -110,7 +105,7 @@ class Viewer(WindowConfig):
         proj = self.camera.projection
 
         # geometry
-        self.geometry_pass.render(self.gbuffer, self.model, view, proj, time)
+        self.geometry_pass.render(self.gbuffer, self.input.model_matrix, view, proj, time)
 
         # ssao
         if self.use_ssao:

@@ -1,8 +1,17 @@
 import time
 from dataclasses import dataclass
-from typing import Callable, Optional
-from gbuffer import GBuffer
+
+import numpy as np
+from pyrr import matrix44 as M, quaternion as Q
+
+from trackball import Trackball
+from camera import TrackballCamera
 from mouse import OSMouse
+from moderngl_window.context.base import BaseWindow
+
+from typing import Callable
+from enum import Enum, auto
+
 
 @dataclass
 class DoubleClickDetector:
@@ -10,9 +19,8 @@ class DoubleClickDetector:
     _armed: bool = False
     _last_time: float = 0.0
 
-    def feed(self, now: float | None = None) -> bool:
-        if now is None:
-            now = time.perf_counter()
+    def feed(self) -> bool:
+        now = time.perf_counter()
 
         if not self._armed:
             self._armed = True
@@ -42,29 +50,30 @@ class LeftClickGesture:
         self._press_xy = (0, 0)
         self._press_wh = (1, 1)
 
-    def on_press(self, x: int, y: int, w: int, h: int) -> bool:
-        if self.double.feed():
-            self.cancel_rotate()
-            return True
+    def on_press(self, x: int, y: int, w: int, h: int, can_arm_double:bool|None=None) -> bool:
+        if can_arm_double is not None and can_arm_double:
+            if self.double.feed():
+                self.cancel_rotate()
+                return True
 
         self._pending_rotate = True
         self._press_xy = (x, y)
         self._press_wh = (w, h)
         return False
 
-    def on_drag(self, camera, x: int, y: int, w: int, h: int) -> None:
+    def on_drag(self, rotator:Trackball, x: int, y: int, w: int, h: int) -> None:
         if self._pending_rotate and not self._rotating:
             px, py = self._press_xy
             pw, ph = self._press_wh
-            camera.begin_rotate(px, py, pw, ph)
+            rotator.begin_rotate(px, py, pw, ph)
             self._rotating = True
 
         if self._rotating:
-            camera.rotate(x, y, w, h)
+            rotator.rotate(x, y, w, h)
 
-    def on_release(self, camera) -> None:
+    def on_release(self, rotator) -> None:
         if self._rotating:
-            camera.end_rotate()
+            rotator.end_rotate()
         self._pending_rotate = False
         self._rotating = False
 
@@ -73,14 +82,23 @@ class LeftClickGesture:
         self._rotating = False
 
 
+
+class RotatorType(Enum):
+    CAMERA = auto()
+    MODEL = auto()
+    ENV = auto()
+
 class CameraInputController:
 
+    
     def __init__(
         self,
-        wnd,
-        camera,
+        wnd: BaseWindow,
+        camera: TrackballCamera,
         zoom_sensitivity: float = 0.2,
         double_click_delay: float = 0.30,
+        ball_size: float = 0.8,
+        sample_world_position: Callable[[int,int], bool] | None = None
     ):
         self.wnd = wnd
         self.camera = camera
@@ -89,12 +107,47 @@ class CameraInputController:
         self.left = LeftClickGesture(double_delay=double_click_delay)
         self._panning = False
 
-    def on_press(self, x: int, y: int, gbuffer:GBuffer, button) -> None:
+        self._model_tb = Trackball(ball_size=ball_size)
+        self._env_tb = Trackball(ball_size=ball_size)
+
+        self.model_quat = np.array([0, 0, 0, 1], dtype=np.float32)
+        self.env_quat = np.array([0, 0, 0, 1], dtype=np.float32)
+
+        self.model_matrix = M.create_identity(dtype=np.float32)
+        self.env_matrix = M.create_identity(dtype=np.float32)
+
+        self._active = RotatorType.CAMERA 
+        self._base_quat = np.array([0, 0, 0, 1], dtype=np.float32)
+
+        self._sample_world_position = sample_world_position
+
+        self.left = LeftClickGesture(double_delay=double_click_delay)
+
+    def _choose_active(self) -> str:
+        if self.wnd.modifiers.ctrl:
+            return  RotatorType.MODEL
+        if self.wnd.modifiers.shift:
+            return RotatorType.ENV
+        return RotatorType.CAMERA
+
+    def on_press(self, x: int, y: int, button) -> None:
         w, h = self.wnd.size
 
         if button == self.wnd.mouse.left:
-            if self.left.on_press(x, y, w, h):
-                self._on_double_click(x, y, gbuffer)
+            self._active = self._choose_active()
+
+            if self._active == RotatorType.MODEL:
+                self._base_quat = self.model_quat.copy()
+                self._model_tb.reset_rotation()
+            elif self._active == RotatorType.ENV:
+                self._base_quat = self.env_quat.copy()
+                self._env_tb.reset_rotation()
+
+            can_arm_double = self._is_object(x, y)
+            if self.left.on_press(x, y, w, h, can_arm_double):
+                self.left.cancel_rotate()
+                self._active = RotatorType.CAMERA
+                self._on_double_click(x, y)
             return
 
         if button == self.wnd.mouse.right:
@@ -107,12 +160,37 @@ class CameraInputController:
 
         if self._panning:
             self.camera.pan(dx, dy, w, h)
-        else:
+            return
+
+        if self._active == RotatorType.CAMERA:
             self.left.on_drag(self.camera, x, y, w, h)
+            return
+        
+        tb = self._model_tb if self._active == RotatorType.MODEL else self._env_tb
+        self.left.on_drag(tb, x, y, w, h)
+
+        q_cam = self.camera.get_quat()
+        q_cam_conj = Q.conjugate(q_cam)
+        q_world_delta = Q.cross(q_cam, Q.cross(tb.get_quat(), q_cam_conj))
+
+        q_new = Q.normalize(Q.cross( self._base_quat, q_world_delta))
+
+        if self._active == RotatorType.MODEL:
+            self.model_quat = q_new
+            self.model_matrix = M.create_from_quaternion(self.model_quat)
+        else:
+            self.env_quat = q_new
+            self.env_matrix = M.create_from_quaternion(self.env_quat)
 
     def on_release(self, x: int, y: int, button) -> None:
         if button == self.wnd.mouse.left:
-            self.left.on_release(self.camera)
+            if self._active == RotatorType.CAMERA:
+                self.left.on_release(self.camera)
+            elif self._active == RotatorType.MODEL:
+                self.left.on_release(self._model_tb)
+            else:
+                self.left.on_release(self._env_tb)
+            self._active = RotatorType.CAMERA
             return
 
         if button == self.wnd.mouse.right:
@@ -122,8 +200,16 @@ class CameraInputController:
     def on_scroll(self, y_offset: float) -> None:
         self.camera.zoom(y_offset * self.zoom_sensitivity)
 
-    def _on_double_click(self, x:int, y:int, gbuffer:GBuffer):
-        picked_pos = gbuffer.sample_world_position(x, y)
+    
+    def _on_double_click(self, x: int, y: int):
+        if self._sample_world_position is None:
+            return None
+        picked_pos = self._sample_world_position(x, y)
         if picked_pos is not None:
             self.camera.set_pivot(picked_pos)
             self.os_mouse.center()
+
+    def _is_object(self, x, y):
+        if self._sample_world_position is None:
+            return None
+        return self._sample_world_position(x, y) is not None

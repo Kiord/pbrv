@@ -46,12 +46,12 @@ class Trackball:
         return float((t * t) / d)
 
 
-    def begin(self, x: float, y: float, width: int, height: int):
+    def begin_rotate(self, x: float, y: float, width: int, height: int):
         self._start_quat = self._quat.copy()
         self._p1[:] = self._map_to_ndc(x, y, width, height)
         self._dragging = True
 
-    def drag(self, x: float, y: float, width: int, height: int):
+    def rotate(self, x: float, y: float, width: int, height: int):
         if not self._dragging:
             return
 
@@ -90,11 +90,16 @@ class Trackball:
         self._quat = quaternion.cross(self._start_quat, q_drag)
         
 
-    def end(self):
+    def end_rotate(self):
         self._dragging = False
 
     def get_matrix(self) -> np.ndarray:
         return matrix44.create_from_quaternion(self._quat)
 
     def get_quat(self) -> np.ndarray:
-        return self._quat
+        return self._quat.copy()
+
+    def reset_rotation(self):
+        self._quat = quaternion.create(dtype=np.float32)
+        self._start_quat = self._quat.copy()
+        self._dragging = False

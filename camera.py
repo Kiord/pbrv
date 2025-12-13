@@ -5,7 +5,7 @@ from constants import UP, FRONT, EPSILON
 from typing import Tuple
 import math
 
-class TrackballCamera:
+class TrackballCamera(Trackball):
     """Camera controlled by a trackball.
     Usage:
 
@@ -31,6 +31,7 @@ class TrackballCamera:
         max_distance: float = 5.0,
         zoom_speed:float = 0.5
     ):
+        super().__init__(ball_size)
         self.distance = float(distance)
         self.min_distance = float(min_distance)
         self.max_distance = float(max_distance)
@@ -46,7 +47,7 @@ class TrackballCamera:
             self.fov_deg, aspect, self.near, self.far
         )
 
-        self.trackball = Trackball(ball_size=ball_size)
+        #self.trackball = Trackball(ball_size=ball_size)
 
 
     def resize(self, width: int, height: int):
@@ -57,14 +58,14 @@ class TrackballCamera:
             self.fov_deg, aspect, self.near, self.far
         )
 
-    def begin_rotate(self, x: float, y: float, width: int, height: int):
-        self.trackball.begin(x, y, width, height)
+    # def begin_rotate(self, x: float, y: float, width: int, height: int):
+    #     self.trackball.begin(x, y, width, height)
 
-    def rotate(self, x: float, y: float, width: int, height: int):
-        self.trackball.drag(x, y, width, height)
+    # def rotate(self, x: float, y: float, width: int, height: int):
+    #     self.trackball.drag(x, y, width, height)
 
-    def end_rotate(self):
-        self.trackball.end()
+    # def end_rotate(self):
+    #     self.trackball.end()
 
     def set_pivot(self, new_pivot:Tuple[float, float, float]):
         eye = self.get_view()[1]
@@ -78,7 +79,7 @@ class TrackballCamera:
         self.distance = max(self.min_distance, min(self.max_distance, self.distance))
 
     def get_view(self):
-        quat = self.trackball.get_quat()
+        quat = self.get_quat()
 
         offset = -FRONT * self.distance  # vector from pivot to eye
 
