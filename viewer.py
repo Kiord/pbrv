@@ -136,7 +136,7 @@ if __name__ == '__main__':
         albedo_path='resources/textures/helmet_a.jpg',
         normal_path='resources/textures/helmet_n.jpg',
         roughness_path='resources/textures/helmet_r.jpg',
-        metalness_path='resources/textures/helmet_m.jpg',
+        metallic_path='resources/textures/helmet_m.jpg',
         emissive_path='resources/textures/helmet_e.jpg',
         ambient_occlusion_path='resources/textures/helmet_ao.jpg',
     )

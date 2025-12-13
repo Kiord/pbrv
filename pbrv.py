@@ -72,10 +72,10 @@ def main() -> None:
         help="Roughness scalar (0..1) OR roughness map path",
     )
     parser.add_argument(
-        "--metalness","--metal", "-m",
-        dest='metalness',
+        "--metallic","--metal", "-m",
+        dest='metallic',
         metavar="VALUE_OR_PATH",
-        help="Metalness scalar (0..1) OR metalness map path",
+        help="Metallic scalar (0..1) OR metallic map path",
     )
     
     parser.add_argument(
@@ -173,13 +173,13 @@ def main() -> None:
         )
         roughness_value = roughness_vals[0]
 
-        metalness_vals, metalness_map = parse_value_or_path(
-            args.metalness,
+        metallic_vals, metallic_map = parse_value_or_path(
+            args.metallic,
             default_value=(0.0,),
             valid_lengths=(1,),
-            param_name="--metalness",
+            param_name="--metallic",
         )
-        metalness_value = metalness_vals[0]
+        metallic_value = metallic_vals[0]
 
         emissive_vals, emissive_map = parse_value_or_path(
             args.emissive,
@@ -221,7 +221,7 @@ def main() -> None:
         albedo_path=str(albedo_map) if albedo_map else None,
         normal_path=str(args.normal) if args.normal else None,
         roughness_path=str(roughness_map) if roughness_map else None,
-        metalness_path=str(metalness_map) if metalness_map else None,
+        metallic_path=str(metallic_map) if metallic_map else None,
         emissive_path=str(emissive_map) if emissive_map else None,
         specular_path=str(specular_map) if specular_map else None,
         ambient_occlusion_path=str(args.ao) if args.ao else None,
@@ -229,7 +229,7 @@ def main() -> None:
 
     material.albedo = albedo_color
     material.roughness = roughness_value
-    material.metalness = metalness_value
+    material.metallic = metallic_value
     material.emissive = emissive_value
     material.specular = specular_value
     material.specular_tint = args.specular_tint

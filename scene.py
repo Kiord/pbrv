@@ -36,7 +36,7 @@ class PointLight:
 class Material:
     albedo: Tuple[float, float, float] = (1.0, 1.0, 1.0)
     roughness: float = 1.0
-    metalness: float = 0.0
+    metallic: float = 0.0
     emissive: Tuple[float, float, float] = (0.0, 0.0, 0.0)
     specular: float = 0.3
     specular_tint: float = 0.0
@@ -44,7 +44,7 @@ class Material:
     albedo_map: Optional[np.ndarray] = None
     normal_map: Optional[np.ndarray] = None
     roughness_map: Optional[np.ndarray] = None
-    metalness_map: Optional[np.ndarray] = None
+    metallic_map: Optional[np.ndarray] = None
     emissive_map: Optional[np.ndarray] = None
     specular_map: Optional[np.ndarray] = None
     ambient_occlusion_map: Optional[np.ndarray] = None
@@ -55,7 +55,7 @@ class Material:
         albedo_path: Optional[str] = None,
         normal_path: Optional[str] = None,
         roughness_path: Optional[str] = None,
-        metalness_path: Optional[str] = None,
+        metallic_path: Optional[str] = None,
         emissive_path: Optional[str] = None,
         specular_path: Optional[str] = None,
         ambient_occlusion_path: Optional[str] = None,
@@ -65,7 +65,7 @@ class Material:
             albedo_path,
             normal_path,
             roughness_path,
-            metalness_path,
+            metallic_path,
             emissive_path,
             specular_path,
             ambient_occlusion_path,
@@ -77,7 +77,7 @@ class Material:
         albedo_path: Optional[str] = None,
         normal_path: Optional[str] = None,
         roughness_path: Optional[str] = None,
-        metalness_path: Optional[str] = None,
+        metallic_path: Optional[str] = None,
         emissive_path: Optional[str] = None,
         specular_path: Optional[str] = None,
         ambient_occlusion_path: Optional[str] = None,
@@ -85,7 +85,7 @@ class Material:
         self.albedo_map = _load_map(albedo_path)
         self.normal_map = _load_map(normal_path)
         self.roughness_map = _load_map(roughness_path)
-        self.metalness_map = _load_map(metalness_path)
+        self.metallic_map = _load_map(metallic_path)
         self.emissive_map = _load_map(emissive_path)
         self.specular_map = _load_map(specular_path)
         self.ambient_occlusion_map = _load_map(ambient_occlusion_path)

@@ -29,9 +29,9 @@ uniform float u_roughness;
 uniform sampler2D u_roughness_map;
 uniform bool      u_use_roughness_map;
 
-uniform float u_metalness;
-uniform sampler2D u_metalness_map;
-uniform bool      u_use_metalness_map;
+uniform float u_metallic;
+uniform sampler2D u_metallic_map;
+uniform bool      u_use_metallic_map;
 
 uniform vec3 u_emissive;
 uniform sampler2D u_emissive_map;
@@ -73,21 +73,21 @@ void main() {
 
     // --- Roughness / metallic / AO packed into gRMAOS ---
     float roughness   = u_roughness;
-    float metalness = u_metalness;
+    float metallic = u_metallic;
     vec3 emissive = u_emissive;
     float specular = u_specular;
     float ao          = 1.0;
 
     if (u_use_roughness_map)
         roughness = texture(u_roughness_map, fs_in.uv).r;
-    if (u_use_metalness_map)
-        metalness = texture(u_metalness_map, fs_in.uv).r;
+    if (u_use_metallic_map)
+        metallic = texture(u_metallic_map, fs_in.uv).r;
     if (u_use_specular_map)
         specular = texture(u_specular_map, fs_in.uv).r;
     if (u_use_ao_map)
         ao = texture(u_ao_map, fs_in.uv).r;
 
-    gRMAOS = vec4(roughness, metalness, ao, specular);
+    gRMAOS = vec4(roughness, metallic, ao, specular);
 
     if (u_use_emissive_map)
         emissive = texture(u_emissive_map, fs_in.uv).rgb;
