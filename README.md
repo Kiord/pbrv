@@ -2,7 +2,7 @@
 
 `pbrv` (PBR Viewer) is a lightweight CLI program to quickly visualize 3D PBR assets.
 
-[<img src="resources/misc/snapshot.jpg">]()
+[<img src="resources/misc/snapshot2.jpg">]()
 
 ## Usage
 
