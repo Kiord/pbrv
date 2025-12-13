@@ -49,7 +49,7 @@ void main()
             continue;
 
         vec3 sampleWorld = texture(gPosition, offsetUV).xyz;
-        if (sampleWorld.x > 1.1) 
+        if (sampleWorld.x > 2.0) 
             continue;
         vec3 sampleView  = (u_view * vec4(sampleWorld, 1.0)).xyz;
 

@@ -265,11 +265,11 @@ void main()
 {
     vec3 worldPos = texture(gPosition, v_uv).rgb;
     vec3 viewDir = get_world_dir_from_uv(v_uv);
-    if (worldPos.x > 1.1) {
+    if (worldPos.x > 2.0) {
         if (u_use_env){
             vec3 bg  = texture(u_background_env, viewDir).rgb;
             //vec3 bg  = texture(u_irradiance_env, viewDir).rgb / PI;
-            //vec3 bg  = textureLod(u_specular_env, viewDir, 9*(0.5+0.5*sin(u_time))).rgb;
+            //vec3 bg  = textureLod(u_specular_env, viewDir, 4).rgb;
             bg = tonemap(bg);
             fragColor = vec4(bg, 1.0);
         }
@@ -294,6 +294,7 @@ void main()
     if (u_use_ssao) {
         ao = texture(u_ssao, v_uv).r;
     }
+    //ao = 1.0;
     
     float luminance = dot(albedo, LUMINANCE_PERCEPTION);
     vec3 Ctint = luminance > 0.0 ? albedo / luminance : vec3(1.0);
@@ -315,5 +316,6 @@ void main()
     
     color = tonemap(color);
 
-    fragColor = vec4(color, 1.0);
+    fragColor = vec4(color,1.0);
+    //fragColor.rgb=vec3(roughness);
 }
