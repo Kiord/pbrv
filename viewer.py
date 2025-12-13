@@ -119,6 +119,7 @@ class Viewer(WindowConfig):
             eye,
             view, 
             proj,
+            self.input.env_matrix,
             self.use_ssao,
             self.tone_mapping,
             self.exposure,

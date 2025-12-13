@@ -173,13 +173,13 @@ class CameraInputController:
         q_cam_conj = Q.conjugate(q_cam)
         q_world_delta = Q.cross(q_cam, Q.cross(tb.get_quat(), q_cam_conj))
 
-        q_new = Q.normalize(Q.cross( self._base_quat, q_world_delta))
-
         if self._active == RotatorType.MODEL:
-            self.model_quat = q_new
+            # local/object feel
+            self.model_quat = Q.normalize(Q.cross(self._base_quat, q_world_delta))
             self.model_matrix = M.create_from_quaternion(self.model_quat)
         else:
-            self.env_quat = q_new
+            # env feel: inverse delta, applied in world space
+            self.env_quat = Q.normalize(Q.cross(Q.conjugate(q_world_delta), self._base_quat))
             self.env_matrix = M.create_from_quaternion(self.env_quat)
 
     def on_release(self, x: int, y: int, button) -> None:

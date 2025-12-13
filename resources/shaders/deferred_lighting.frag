@@ -26,6 +26,7 @@ uniform vec3 u_lightColor;
 uniform vec3 u_viewPos;
 uniform mat4 u_invView;
 uniform mat4 u_invProj;
+uniform mat3 u_envRotation;
 
 uniform float u_time;
 
@@ -225,6 +226,10 @@ vec3 evaluateDirectLightingBRDF(
     return (diffuseBRDF + specularBRDF) * radiance * NdotL;
 }
 
+vec3 envSamplingDirection(vec3 dirWorld){
+    return normalize(u_envRotation * dirWorld);
+}
+
 vec3 evaluateIBLBRDF(
     vec3 N,
     vec3 V,
@@ -244,14 +249,14 @@ vec3 evaluateIBLBRDF(
 
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
-    vec3 irradiance = texture(u_irradiance_env, N).rgb;// / PI;
+    vec3 irradiance = texture(u_irradiance_env, envSamplingDirection(N)).rgb;// / PI;
     //vec3 irradiance = textureLod(u_specular_env, N, 9).rgb * PI;
     vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;// / PI;
 
     vec3 R = reflect(-V, N);
 
     float lod = roughness * float(u_num_specular_mips - 1);
-    vec3 prefilteredColor = textureLod(u_specular_env, R, lod).rgb;
+    vec3 prefilteredColor = textureLod(u_specular_env, envSamplingDirection(R), lod).rgb;
 
     vec3 specIBL = prefilteredColor * F_ibl;
 
@@ -261,13 +266,15 @@ vec3 evaluateIBLBRDF(
     return ao * diffuseIBL + specAO * specIBL;
 }
 
+
+
 void main()
 {
     vec3 worldPos = texture(gPosition, v_uv).rgb;
     vec3 viewDir = get_world_dir_from_uv(v_uv);
     if (worldPos.x > 2.0) {
         if (u_use_env){
-            vec3 bg  = texture(u_background_env, viewDir).rgb;
+            vec3 bg  = texture(u_background_env, envSamplingDirection(viewDir)).rgb;
             //vec3 bg  = texture(u_irradiance_env, viewDir).rgb / PI;
             //vec3 bg  = textureLod(u_specular_env, viewDir, 4).rgb;
             bg = tonemap(bg);
