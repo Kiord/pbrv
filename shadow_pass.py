@@ -42,11 +42,21 @@ class ShadowPass(Pass):
 
         self.fbo: Framebuffer = self.ctx.framebuffer(depth_attachment=self.depth_tex)
 
-        self.prog: Program = self.load_program_fn(
-            vertex_shader="shaders/shadow_depth.vert",
-            fragment_shader="shaders/shadow_depth.frag",
-        )
+        self.prog = self.ctx.program(
+            """
+            #version 330 core
 
+            in vec3 in_position;
+
+            uniform mat4 u_model;
+            uniform mat4 u_lightViewProj;
+
+            void main() {
+                gl_Position = u_lightViewProj * u_model * vec4(in_position, 1.0);
+            }
+            """,
+
+        )
 
         self.vao: VertexArray = self.ctx.vertex_array(
             self.prog,

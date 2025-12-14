@@ -144,14 +144,15 @@ class Viewer(WindowConfig):
 
 
 if __name__ == '__main__':
-    mesh = Mesh.from_path('resources/meshes/helmet.obj')
+    asset_name = 'lantern'
+    mesh = Mesh.from_path(f'resources/meshes/{asset_name}.obj')
     material = Material.from_map_paths(
-        albedo_path='resources/textures/helmet_a.jpg',
-        normal_path='resources/textures/helmet_n.jpg',
-        roughness_path='resources/textures/helmet_r.jpg',
-        metallic_path='resources/textures/helmet_m.jpg',
-        emissive_path='resources/textures/helmet_e.jpg',
-        ambient_occlusion_path='resources/textures/helmet_ao.jpg',
+        albedo_path=f'resources/textures/{asset_name}_a.jpg',
+        normal_path=f'resources/textures/{asset_name}_n.jpg',
+        roughness_path=f'resources/textures/{asset_name}_r.jpg',
+        metallic_path=f'resources/textures/{asset_name}_m.jpg',
+        #emissive_path=f'resources/textures/{asset_name}_e.jpg',
+        ambient_occlusion_path=f'resources/textures/{asset_name}_ao.jpg',
     )
     envmap = None#Panorama.from_path('resources/panoramas/forest2.exr')
 
