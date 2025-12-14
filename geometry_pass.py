@@ -8,7 +8,7 @@ import numpy as np
 from constants import TexUnit
 from utils import Pass, safe_set_uniform
 from gbuffer import GBuffer
-from scene import Scene
+from scene import Material
 
 
 @dataclass
@@ -22,13 +22,12 @@ class GeometryPass(Pass):
         self,
         ctx: Context,
         load_program_fn,
-        scene: Scene,
         vbo: Buffer,
         ibo: Buffer,
+        material:Material,
         config: Optional[GeometryConfig] = None,
     ):
         super().__init__(ctx, load_program_fn)
-        self.scene = scene
         self.vbo = vbo
         self.ibo = ibo
         self.cfg = config or GeometryConfig()
@@ -53,7 +52,7 @@ class GeometryPass(Pass):
         self.use_ao_tex = False 
 
         self.reload_shaders()
-        self._load_material_textures()
+        self._load_material_textures(material)
 
 
     def reload_shaders(self) -> None:
@@ -92,16 +91,15 @@ class GeometryPass(Pass):
         safe_set_uniform(self.prog, "u_ao_map", TexUnit.AO_MAP)
 
 
-    def _load_material_textures(self) -> None:
-        mat = self.scene.material
+    def _load_material_textures(self, material:Material) -> None:
 
-        self.albedo_tex, self.use_albedo_tex = self._make_texture2d(mat.albedo_map, 3)
-        self.normal_tex, self.use_normal_tex = self._make_texture2d(mat.normal_map, 3)
-        self.roughness_tex, self.use_roughness_tex = self._make_texture2d(mat.roughness_map, 1)
-        self.metallic_tex, self.use_metallic_tex = self._make_texture2d(mat.metallic_map, 1)
-        self.emissive_tex, self.use_emissive_tex = self._make_texture2d(mat.emissive_map, 3)
-        self.specular_tex, self.use_specular_tex = self._make_texture2d(mat.specular_map, 1)
-        self.ao_tex, self.use_ao_tex = self._make_texture2d(mat.ambient_occlusion_map, 1)
+        self.albedo_tex, self.use_albedo_tex = self._make_texture2d(material.albedo_map, 3)
+        self.normal_tex, self.use_normal_tex = self._make_texture2d(material.normal_map, 3)
+        self.roughness_tex, self.use_roughness_tex = self._make_texture2d(material.roughness_map, 1)
+        self.metallic_tex, self.use_metallic_tex = self._make_texture2d(material.metallic_map, 1)
+        self.emissive_tex, self.use_emissive_tex = self._make_texture2d(material.emissive_map, 3)
+        self.specular_tex, self.use_specular_tex = self._make_texture2d(material.specular_map, 1)
+        self.ao_tex, self.use_ao_tex = self._make_texture2d(material.ambient_occlusion_map, 1)
 
     def _make_texture2d(
         self,
@@ -129,7 +127,7 @@ class GeometryPass(Pass):
         tex.repeat_y = True
         return tex, to_use
 
-    def _update_material_uniforms(self) -> None:
+    def _update_material_uniforms(self, material:Material) -> None:
         safe_set_uniform(self.prog, "u_use_albedo_map", self.use_albedo_tex)
         safe_set_uniform(self.prog, "u_use_normal_map", self.use_normal_tex)
         safe_set_uniform(self.prog, "u_use_roughness_map", self.use_roughness_tex)
@@ -137,15 +135,16 @@ class GeometryPass(Pass):
         safe_set_uniform(self.prog, "u_use_emissive_map", self.use_emissive_tex)
         safe_set_uniform(self.prog, "u_use_specular_map", self.use_specular_tex)
         safe_set_uniform(self.prog, "u_use_ao_map", self.use_ao_tex)
-        safe_set_uniform(self.prog, "u_albedo", self.scene.material.albedo)
-        safe_set_uniform(self.prog, "u_roughness", self.scene.material.roughness)
-        safe_set_uniform(self.prog, "u_emissive", self.scene.material.emissive)
-        safe_set_uniform(self.prog, "u_specular", self.scene.material.specular)
+        safe_set_uniform(self.prog, "u_albedo", material.albedo)
+        safe_set_uniform(self.prog, "u_roughness", material.roughness)
+        safe_set_uniform(self.prog, "u_emissive", material.emissive)
+        safe_set_uniform(self.prog, "u_specular", material.specular)
 
 
     def render(
         self,
         gbuffer: GBuffer,
+        material: Material,
         model_matrix: np.ndarray,
         view_matrix: np.ndarray,
         projection_matrix: np.ndarray,
@@ -154,6 +153,7 @@ class GeometryPass(Pass):
         gbuffer.fbo.use()
         self.ctx.viewport = (0, 0, gbuffer.width, gbuffer.height)
         self.ctx.enable(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
+        self.ctx.cull_face = "back"
         self.ctx.clear(100.0, 0.0, 0.0, 1.0)
 
         self.prog["u_model"].write(np.asarray(model_matrix, dtype="f4").tobytes())
@@ -162,7 +162,7 @@ class GeometryPass(Pass):
         normal_matrix = np.linalg.inv(model_matrix).T[:3, :3]
         self.prog["u_normal_matrix"].write(np.asarray(normal_matrix, dtype="f4").tobytes())
 
-        self._update_material_uniforms()
+        self._update_material_uniforms(material)
         safe_set_uniform(self.prog, "u_time", time_value)
 
         self.albedo_tex.use(location=TexUnit.ALBEDO_MAP)

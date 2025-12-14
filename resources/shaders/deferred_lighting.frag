@@ -23,8 +23,7 @@ uniform float u_exposure;
 
 uniform bool u_use_ssao;
 
-uniform vec3 u_lightPos;
-uniform vec3 u_lightColor;
+
 uniform vec3 u_viewPos;
 uniform mat4 u_invView;
 uniform mat4 u_invProj;
@@ -33,6 +32,22 @@ uniform mat3 u_envRotation;
 uniform float u_time;
 
 uniform float u_specularTint = 0.0;
+
+uniform bool u_use_point_light;
+uniform vec3 u_pointLightPos;
+uniform vec3 u_pointLightColor;
+
+uniform bool  u_use_dir_light;
+uniform vec3  u_dirLightDir;
+uniform vec3  u_dirLightColor;
+
+
+
+uniform sampler2DShadow u_shadowMap;
+uniform mat4  u_lightViewProj;
+uniform float u_shadow_bias;      // small bias to fight acne
+uniform float u_shadow_strength;  // 0..1
+
 
 const float GAMMA = 2.2;
 const vec3 LUMINANCE_PERCEPTION = vec3(0.2126, 0.7152, 0.0722);
@@ -201,6 +216,33 @@ vec3 evalDiffuseBRDF(vec3 albedo, float metallic, vec3 F)
     return kD * albedo / PI;
 }
 
+
+
+float shadowVisibility(vec3 worldPos, vec3 N, vec3 L)
+{
+    vec4 lightClip = u_lightViewProj * vec4(worldPos, 1.0);
+    vec3 projCoords = (lightClip.xyz / lightClip.w) * 0.5 + 0.5;
+
+    // Outside the shadow map -> treat as lit
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
+        projCoords.y < 0.0 || projCoords.y > 1.0 ||
+        projCoords.z < 0.0 || projCoords.z > 1.0)
+        return 1.0;
+
+    vec2 shadowMapSize = vec2(4096);
+    vec2 texel = 1.0 / shadowMapSize;
+
+    float sum = 0.0;
+    for (int y = -1; y <= 1; ++y)
+    for (int x = -1; x <= 1; ++x)
+    {
+        vec2 uv = projCoords.xy + vec2(x, y) * texel;
+        sum += texture(u_shadowMap, vec3(uv, projCoords.z)); // returns 0..1 compare result
+    }
+
+    return sum / 9.0;
+}
+
 vec3 evaluateDirectLightingBRDF(
     vec3 worldPos,
     vec3 N,
@@ -210,11 +252,11 @@ vec3 evaluateDirectLightingBRDF(
     float metallic,
     vec3 F0
 ){
-    vec3 L = normalize(u_lightPos - worldPos);
+    vec3 L = normalize(u_pointLightPos - worldPos);
 
-    float distance    = length(u_lightPos - worldPos);
+    float distance    = length(u_pointLightPos - worldPos);
     float attenuation = 1.0 / (distance * distance);
-    vec3 radiance     = u_lightColor * attenuation;
+    vec3 radiance     = u_pointLightColor * attenuation;
 
     
 
@@ -226,6 +268,31 @@ vec3 evaluateDirectLightingBRDF(
 
     // Lo_direct
     return (diffuseBRDF + specularBRDF) * radiance * NdotL;
+}
+
+vec3 evaluateDirectionalLightingBRDF(
+    vec3 worldPos,
+    vec3 N,
+    vec3 V,
+    vec3 albedo,
+    float roughness,
+    float metallic,
+    vec3 F0
+){
+    // u_dirLightDir points FROM light TO scene, so surface->light is -dir
+    vec3 L = normalize(-u_dirLightDir);
+    float NdotL = max(dot(N, L), 0.0);
+    if (NdotL <= 0.0) {
+        return vec3(0.0);
+    }
+
+    vec3 radiance = u_dirLightColor;
+    vec3 F;
+    vec3 specularBRDF = evalSpecularBRDF(N, V, L, roughness, F0, F);
+    vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F);
+
+    float vis = shadowVisibility(worldPos, N, L);
+    return (diffuseBRDF + specularBRDF) * radiance * NdotL * vis;
 }
 
 vec3 envSamplingDirection(vec3 dirWorld){
@@ -251,9 +318,8 @@ vec3 evaluateIBLBRDF(
 
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
-    vec3 irradiance = texture(u_irradiance_env, envSamplingDirection(N)).rgb;// / PI;
-    //vec3 irradiance = textureLod(u_specular_env, N, 9).rgb * PI;
-    vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;// / PI;
+    vec3 irradiance = texture(u_irradiance_env, envSamplingDirection(N)).rgb;
+    vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;
 
     vec3 R = reflect(-V, N);
 
@@ -269,14 +335,14 @@ vec3 evaluateIBLBRDF(
 }
 
 
-
 void main()
 {
     vec3 worldPos = texture(gPosition, v_uv).rgb;
-    vec3 viewDir = get_world_dir_from_uv(v_uv);
+
     if (worldPos.x > 2.0) {
         if (u_use_env){
             vec3 bg = vec3(0.0);
+            vec3 viewDir = get_world_dir_from_uv(v_uv);
             viewDir = envSamplingDirection(viewDir);
             if (u_env_lod == 0.0)
                 bg  = texture(u_background_env, viewDir).rgb;
@@ -286,10 +352,13 @@ void main()
                 bg = textureLod(u_specular_env, viewDir, u_env_lod).rgb;
             bg = tonemap(bg);
             fragColor = vec4(bg, 1.0);
+            return;
         }
+        fragColor = vec4(0, 0, 0, 1);
         return;
     }
 
+    vec3 viewDir = normalize(worldPos - u_viewPos);
     vec3 N      = normalize(texture(gNormal, v_uv).rgb);
     vec3 albedo = texture(gAlbedo, v_uv).rgb;
     vec4 rmaos   = texture(gRMAOS, v_uv);
@@ -299,7 +368,6 @@ void main()
     float specular  = clamp(rmaos.a, 0.0, 1.0);
     float ao        = clamp(rmaos.b, 0.0, 1.0);
 
-    N = normalize(N);
 
     // V is surface -> camera
     vec3 V = -viewDir;
@@ -315,10 +383,20 @@ void main()
     vec3 dielectricF0 =  0.08 * specular * mix(vec3(1.0), Ctint, u_specularTint);
     vec3 F0 = mix(dielectricF0, albedo, metallic);
 
-    vec3 Lo_direct = evaluateDirectLightingBRDF(
-        worldPos, N, V,
-        albedo, roughness, metallic, F0
-    );
+    vec3 Lo_direct = vec3(0.0);
+    if (u_use_point_light && dot(u_pointLightColor, u_pointLightColor) > 0.0) {
+        Lo_direct += evaluateDirectLightingBRDF(
+            worldPos, N, V,
+            albedo, roughness, metallic, F0
+        );
+    }
+    // Directional light + shadow (optional)
+    if (u_use_dir_light && dot(u_dirLightColor, u_dirLightColor) > 0.0) {
+        Lo_direct += evaluateDirectionalLightingBRDF(
+            worldPos, N, V,
+            albedo, roughness, metallic, F0
+        );
+    }
 
     // -------- IBL (BRDF-based) --------
     vec3 Lo_ibl = evaluateIBLBRDF(
@@ -333,5 +411,4 @@ void main()
     color = tonemap(color);
 
     fragColor = vec4(color,1.0);
-    //fragColor.rgb=vec3(roughness);
 }

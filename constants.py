@@ -18,14 +18,16 @@ class TexUnit:
     SSAO             = 6
     SSAO_BLUR        = 7
 
-    ALBEDO_MAP       = 8
-    NORMAL_MAP       = 9
-    ROUGHNESS_MAP    = 10
-    METALLIC_MAP    = 11
-    EMISSIVE_MAP     = 12
-    SPECULAR_MAP     = 13
-    AO_MAP           = 14
+    SHADOW_MAP       = 8
 
-    ENV_BACKGROUND   = 15
-    ENV_IRRADIANCE   = 16
-    ENV_SPECULAR     = 17
+    ALBEDO_MAP       = 9
+    NORMAL_MAP       = 10
+    ROUGHNESS_MAP    = 11
+    METALLIC_MAP     = 12
+    EMISSIVE_MAP     = 13
+    SPECULAR_MAP     = 14
+    AO_MAP           = 15
+
+    ENV_BACKGROUND   = 16
+    ENV_IRRADIANCE   = 17
+    ENV_SPECULAR     = 18

@@ -2,7 +2,7 @@ import time
 from dataclasses import dataclass
 
 import numpy as np
-from pyrr import matrix44 as M, quaternion as Q
+from pyrr import matrix44, matrix33, quaternion as Q
 
 from trackball import Trackball
 from camera import TrackballCamera
@@ -127,8 +127,8 @@ class CameraInputController:
         self.model_quat = np.array([0, 0, 0, 1], dtype=np.float32)
         self.env_quat = np.array([0, 0, 0, 1], dtype=np.float32)
 
-        self.model_matrix = M.create_identity(dtype=np.float32)
-        self.env_matrix = M.create_identity(dtype=np.float32)
+        self.model_matrix = matrix44.create_identity(dtype=np.float32)
+        self.env_matrix = matrix33.create_identity(dtype=np.float32)
 
         self._active = Mode.CAMERA 
         self._base_quat = np.array([0, 0, 0, 1], dtype=np.float32)
@@ -194,11 +194,11 @@ class CameraInputController:
         if self._active == Mode.MODEL:
             # local/object feel
             self.model_quat = Q.normalize(Q.cross(self._base_quat, q_world_delta))
-            self.model_matrix = M.create_from_quaternion(self.model_quat)
+            self.model_matrix = matrix44.create_from_quaternion(self.model_quat)
         else:
             # env feel: inverse delta, applied in world space
             self.env_quat = Q.normalize(Q.cross(Q.conjugate(q_world_delta), self._base_quat))
-            self.env_matrix = M.create_from_quaternion(self.env_quat)
+            self.env_matrix = matrix33.create_from_quaternion(self.env_quat)
 
     def on_release(self, x: int, y: int, button) -> None:
         if button == self.wnd.mouse.left:

@@ -28,9 +28,18 @@ def _load_map(path: Optional[str]) -> Optional[np.ndarray]:
     return img
 
 @dataclass
-class PointLight:
-    position: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+class Light:
     color: Tuple[float, float, float] = (0.0, 0.0, 0.0)
+
+@dataclass
+class DirectionalLight(Light):
+    direction: Tuple[float, float, float] = (0.0, -1.0, 0.0)
+    view_proj: Optional[np.ndarray] = None
+
+@dataclass
+class PointLight(Light):
+    position: Tuple[float, float, float] = (1.0, 1.0, 1.0)
+
 
 @dataclass
 class Material:
@@ -278,4 +287,5 @@ class Scene:
     material: Material
     envmap: Optional[EnvMap]=None
     point_light: Optional[PointLight]=None
+    dir_light: Optional[DirectionalLight]=None
 

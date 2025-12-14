@@ -1,10 +1,12 @@
 from moderngl_window import WindowConfig, run_window_config
 from camera import TrackballCamera
-from scene import Scene, Mesh, Material, Panorama
+from typing import Optional
+from scene import Scene, Mesh, Material, Panorama, DirectionalLight
 from ssao import SSAOPass
 from gbuffer import GBuffer
 from geometry_pass import GeometryPass
 from lighting_pass import LightingPass
+from shadow_pass import ShadowPass
 
 from input_gestures import CameraInputController
 
@@ -33,7 +35,7 @@ class Viewer(WindowConfig):
             exit(2)
         
         # --- mesh ---
-        self.vbo, self.ibo = self.scene.mesh.to_gl(self.ctx)
+        vbo, ibo = self.scene.mesh.to_gl(self.ctx)
 
         # --- Passes ---
         self.gbuffer = GBuffer(self.ctx, *self.window_size)
@@ -41,19 +43,19 @@ class Viewer(WindowConfig):
         self.geometry_pass = GeometryPass(
             self.ctx,
             self.load_program,
-            self.scene,
-            self.vbo,
-            self.ibo,
+            vbo,
+            ibo,
+            self.scene.material,
         )
 
         self.ssao_pass = SSAOPass(self.ctx, self.load_program)
 
+        self.shadow_pass = ShadowPass(self.ctx, self.load_program, vbo, ibo)
+
         self.lighting_pass = LightingPass(
             self.ctx, 
             self.load_program, 
-            self.scene.envmap,
-            self.scene.material.specular_tint,
-            self.scene.point_light)
+            self.scene.envmap)
             
         # Camera / Interaction
         
@@ -105,8 +107,15 @@ class Viewer(WindowConfig):
         view, eye, _ = self.camera.get_view()
         proj = self.camera.projection
 
+        dir_light:Optional[DirectionalLight] = None
+        if self.scene.dir_light is not None:
+            dir_light = self.shadow_pass.render(self.input.model_matrix, 
+                                                self.scene.dir_light, 
+                                                self.input.env_matrix)
+
         # geometry
-        self.geometry_pass.render(self.gbuffer, self.input.model_matrix, view, proj, time)
+        self.geometry_pass.render(self.gbuffer, self.scene.material, 
+                                  self.input.model_matrix, view, proj, time)
 
         # ssao
         if self.use_ssao:
@@ -117,12 +126,16 @@ class Viewer(WindowConfig):
         self.lighting_pass.render(
             self.gbuffer,
             self.ssao_pass.output_texture,
+            self.shadow_pass.depth_tex,
+            self.scene.point_light,
+            dir_light,
             eye,
             view, 
             proj,
             self.input.env_matrix,
             self.input.lod_factor,
             self.use_ssao,
+            self.scene.material.specular_tint,
             self.tone_mapping,
             self.exposure,
             time,
@@ -140,9 +153,10 @@ if __name__ == '__main__':
         emissive_path='resources/textures/helmet_e.jpg',
         ambient_occlusion_path='resources/textures/helmet_ao.jpg',
     )
-    envmap = Panorama.from_path('resources/panoramas/forest2.exr')
+    envmap = None#Panorama.from_path('resources/panoramas/forest2.exr')
 
     point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
+    dir_light = DirectionalLight((1,1,1), (1, -1, 1))
 
-    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light)
+    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light,dir_light=dir_light)
     run_window_config(Viewer)

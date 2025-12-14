@@ -12,6 +12,8 @@ def safe_set_uniform(prog:Program, name: str, value: Any):
             prog[name].write(value.tobytes())
         else:
             prog[name].value = value
+        return
+    #print(f'WARNING, \"{name}\" not found') 
 
 
 class Pass:
