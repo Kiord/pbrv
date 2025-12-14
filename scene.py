@@ -160,6 +160,7 @@ class Mesh:
         mesh.visual.uv = uv
         return Mesh.from_trimesh(cls, mesh)
 
+    @classmethod
     def from_trimesh(cls, mesh:tm.Trimesh):
         bounds = mesh.bounds
         center = (bounds[0] + bounds[1]) / 2.0
