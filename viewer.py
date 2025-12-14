@@ -2,7 +2,7 @@ from moderngl_window import WindowConfig, run_window_config
 from camera import TrackballCamera
 from typing import Optional
 from scene import Scene, Mesh, Material, Panorama, DirectionalLight, PointLight
-from ssao import SSAOPass
+from ssao_pass import SSAOPass
 from gbuffer import GBuffer
 from geometry_pass import GeometryPass
 from lighting_pass import LightingPass
