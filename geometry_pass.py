@@ -152,8 +152,8 @@ class GeometryPass(Pass):
     ) -> None:
         gbuffer.fbo.use()
         self.ctx.viewport = (0, 0, gbuffer.width, gbuffer.height)
-        self.ctx.enable(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
-        self.ctx.cull_face = "back"
+        self.ctx.enable(moderngl.DEPTH_TEST)
+        self.ctx.disable(moderngl.CULL_FACE)
         self.ctx.clear(100.0, 0.0, 0.0, 1.0)
 
         self.prog["u_model"].write(np.asarray(model_matrix, dtype="f4").tobytes())
