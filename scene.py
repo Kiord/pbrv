@@ -3,7 +3,7 @@ from typing import Tuple, Optional
 import moderngl
 from moderngl import Context
 from utils import load_rgb_image_auto
-from constants import MAX_LUMINANCE
+from constants import MAX_LUMINANCE, EPSILON
 
 import numpy as np
 import trimesh as tm
@@ -110,6 +110,7 @@ class Mesh:
 
     @staticmethod
     def _compute_tangents(vertices: np.ndarray,
+                          normals: np.ndarray,
                           uv: np.ndarray,
                           faces: np.ndarray) -> np.ndarray:
         v0 = vertices[faces[:, 0]]
@@ -133,14 +134,15 @@ class Mesh:
 
         tan = (duv2[:, 1][:, None] * edge1 - duv1[:, 1][:, None] * edge2) *  r[:, None]  
 
-        t = np.zeros_like(vertices, dtype=np.float32)
+        t:np.ndarray = np.zeros_like(vertices, dtype=np.float32)
         np.add.at(t, faces[:, 0], tan)
         np.add.at(t, faces[:, 1], tan)
         np.add.at(t, faces[:, 2], tan)
 
-        norms = np.linalg.norm(t, axis=1, keepdims=True)
-        norms[norms < 1e-8] = 1.0
-        t /= norms
+        t = t  / (np.linalg.norm(t, axis=1, keepdims=True) + EPSILON)
+
+        t = t - normals * (t*normals).sum(axis=1, keepdims=True)
+        t = t  / (np.linalg.norm(t, axis=1, keepdims=True) + EPSILON)
 
         return t
 
@@ -158,7 +160,7 @@ class Mesh:
         v = phi / np.pi                    
         uv = np.stack([u, v], axis=1)
         mesh.visual.uv = uv
-        return Mesh.from_trimesh(cls, mesh)
+        return cls.from_trimesh(mesh)
 
     @classmethod
     def from_trimesh(cls, mesh:tm.Trimesh):
@@ -172,10 +174,14 @@ class Mesh:
         if hasattr(mesh.visual, "uv") and mesh.visual.uv is not None:
             uv = mesh.visual.uv
             uv[:, 1] = 1 - uv[:, 1]
-            tangents = cls._compute_tangents(vertices, uv, faces)
+            tangents = cls._compute_tangents(vertices, normals, uv, faces)
         else:
             uv = np.zeros((len(vertices), 2), dtype=np.float32)
             tangents = np.zeros_like(normals)
+            tangents[:, 0] = 1.0
+            tangents = np.cross(tangents, normals, axis=-1)
+            tangents = tangents  / (np.linalg.norm(tangents, axis=1, keepdims=True) + EPSILON)
+
         
 
         return cls(
@@ -189,7 +195,7 @@ class Mesh:
     @classmethod
     def from_path(cls, mesh_path: str):
         mesh = tm.load_mesh(mesh_path)
-        return Mesh.from_trimesh(cls, mesh)
+        return cls.from_trimesh(mesh)
       
 
     def to_gl(self, ctx:Context):
