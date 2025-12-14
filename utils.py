@@ -152,21 +152,18 @@ def uv_sphere(n_lat=32, n_lon=64, dtype=np.float32):
     top_faces = np.stack([j, ring_start + j + 1, ring_start + j], axis=1).astype(np.int32, copy=False)
 
     bands = n_lat - 2  
-    if bands > 0:
-        ii = np.arange(bands, dtype=np.int32)[:, None]  #  bands 1
-        jj = j[None, :]                                 #  1 n_lon
+    ii = np.arange(bands, dtype=np.int32)[:, None]  #  bands 1
+    jj = j[None, :]                                 #  1 n_lon
 
-        a = ring_start + ii * row + jj
-        b = a + 1
-        c = a + row
-        d = c + 1
+    a = ring_start + ii * row + jj
+    b = a + 1
+    c = a + row
+    d = c + 1
 
-        f1 = np.stack([a, c, b], axis=2).reshape(-1, 3)
-        f2 = np.stack([b, c, d], axis=2).reshape(-1, 3)
-        mid_faces = np.vstack([f1, f2]).astype(np.int32, copy=False)
-    else:
-        mid_faces = np.empty((0, 3), dtype=np.int32)
-
+    f1 = np.stack([a, c, b], axis=2).reshape(-1, 3)
+    f2 = np.stack([b, c, d], axis=2).reshape(-1, 3)
+    mid_faces = np.vstack([f1, f2]).astype(np.int32, copy=False)
+   
     bottom_faces = np.stack([south_start + j, last_ring_start + j, last_ring_start + j + 1],
                             axis=1).astype(np.int32, copy=False)
 
