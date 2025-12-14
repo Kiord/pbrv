@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 import moderngl
 from moderngl import Context
-from utils import load_rgb_image_auto
+from utils import load_rgb_image_auto, uv_sphere
 from constants import MAX_LUMINANCE, EPSILON
 
 import numpy as np
@@ -148,19 +148,10 @@ class Mesh:
 
     @classmethod
     def create_sphere(cls):
-        mesh = tm.creation.uv_sphere(radius=1.0)
-        v = mesh.vertices.astype(np.float64)
-        x, y, z = v[:, 0], v[:, 1], v[:, 2]
-        r = np.linalg.norm(v, axis=1)
-        r[r == 0.0] = 1.0
-        xn, yn, zn = x / r, y / r, z / r
-        theta = np.arctan2(zn, xn)       
-        phi   = np.arccos(np.clip(yn, -1.0, 1.0))
-        u = (theta + np.pi) / (2.0 * np.pi)
-        v = phi / np.pi                    
-        uv = np.stack([u, v], axis=1)
-        mesh.visual.uv = uv
-        return cls.from_trimesh(mesh)
+        v, f, uv = uv_sphere()
+        t = cls._compute_tangents(v, v, uv, f)
+        print(v.shape, uv.shape, t.shape, f.shape)
+        return cls(v, v, f, uv, t)
 
     @classmethod
     def from_trimesh(cls, mesh:tm.Trimesh):
