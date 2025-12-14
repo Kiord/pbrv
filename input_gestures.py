@@ -9,7 +9,7 @@ from camera import TrackballCamera
 from mouse import OSMouse
 from moderngl_window.context.base import BaseWindow
 
-from typing import Callable
+from typing import Callable, Tuple
 from enum import Enum, auto
 
 
@@ -18,27 +18,35 @@ class DoubleClickDetector:
     max_delay: float = 0.30
     _armed: bool = False
     _last_time: float = 0.0
+    _last_pos:Tuple[int, int]= (-1, -1)
 
-    def feed(self) -> bool:
+    def feed(self, x:int, y:int) -> bool:
         now = time.perf_counter()
 
         if not self._armed:
-            self._armed = True
-            self._last_time = now
+            self._arm(now, x, y)
             return False
 
         dt = now - self._last_time
-        if dt <= self.max_delay:
-            self.reset()
+        if dt <= self.max_delay and self._pixel_distance(x, y) <= 2:
+            self._reset()
             return True
 
-        self._armed = True
-        self._last_time = now
+        self._arm(now, x, y)
         return False
+    
+    def _pixel_distance(self, x:int, y:int)->int:
+        return abs(x-self._last_pos[0]) + abs(y-self._last_pos[1])
 
-    def reset(self) -> None:
+    def _arm(self, time:float, x:int, y:int)->None:
+        self._armed = True
+        self._last_time = time
+        self._last_pos = (x, y)
+
+    def _reset(self) -> None:
         self._armed = False
         self._last_time = 0.0
+        self._last_pos = (-1, -1)
 
 
 class LeftClickGesture:
@@ -50,9 +58,9 @@ class LeftClickGesture:
         self._press_xy = (0, 0)
         self._press_wh = (1, 1)
 
-    def on_press(self, x: int, y: int, w: int, h: int, can_arm_double:bool|None=None) -> bool:
-        if can_arm_double is not None and can_arm_double:
-            if self.double.feed():
+    def on_press(self, x: int, y: int, w: int, h: int, can_arm_double:bool) -> bool:
+        if can_arm_double:
+            if self.double.feed(x, y):
                 self.cancel_rotate()
                 return True
 
@@ -138,11 +146,9 @@ class CameraInputController:
 
         self._sample_world_position = sample_world_position
 
-        self.left = LeftClickGesture(double_delay=double_click_delay)
-
         self.modifiers = Modifiers()
 
-    def _choose_active(self) -> str:
+    def _choose_active(self) -> Mode:
         if self.modifiers.ctrl:
             return  Mode.MODEL
         if self.modifiers.shift:
@@ -233,7 +239,7 @@ class CameraInputController:
 
     def _is_object(self, x, y):
         if self._sample_world_position is None:
-            return None
+            return False
         return self._sample_world_position(x, y) is not None
     
     def on_key_event(self, key, action, modifiers):
