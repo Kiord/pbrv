@@ -1,7 +1,7 @@
 from moderngl_window import WindowConfig, run_window_config
 from camera import TrackballCamera
 from typing import Optional
-from scene import Scene, Mesh, Material, Panorama, DirectionalLight
+from scene import Scene, Mesh, Material, Panorama, DirectionalLight, PointLight
 from ssao import SSAOPass
 from gbuffer import GBuffer
 from geometry_pass import GeometryPass
@@ -144,20 +144,21 @@ class Viewer(WindowConfig):
 
 
 if __name__ == '__main__':
-    asset_name = 'lantern'
+    asset_name = 'helmet'
     mesh = Mesh.from_path(f'resources/meshes/{asset_name}.obj')
     material = Material.from_map_paths(
         albedo_path=f'resources/textures/{asset_name}_a.jpg',
         normal_path=f'resources/textures/{asset_name}_n.jpg',
         roughness_path=f'resources/textures/{asset_name}_r.jpg',
         metallic_path=f'resources/textures/{asset_name}_m.jpg',
-        #emissive_path=f'resources/textures/{asset_name}_e.jpg',
-        ambient_occlusion_path=f'resources/textures/{asset_name}_ao.jpg',
+        emissive_path=f'resources/textures/{asset_name}_e.jpg',
+        #ambient_occlusion_path=f'resources/textures/{asset_name}_ao.jpg',
     )
-    envmap = None#Panorama.from_path('resources/panoramas/forest2.exr')
+    envmap = Panorama.from_path('resources/panoramas/forest2.exr')
 
     point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
-    dir_light = DirectionalLight((1,1,1), (1, -1, 1))
+    dir_light = None#DirectionalLight((1,1,1), (1, -1, 1))
 
     Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light,dir_light=dir_light)
+    Viewer.use_ssao = True
     run_window_config(Viewer)

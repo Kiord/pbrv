@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import moderngl
-from moderngl import Program
+from moderngl import Program, Texture, Framebuffer, VertexArray
 import numpy as np
 from constants import EPSILON, TexUnit
 from typing import Callable, Optional
@@ -24,15 +24,31 @@ class SSAOPass(Pass):
 
         self.cfg = config 
         self._init_kernel_and_noise()
+        
         self.prog:Optional[Program] = None
         self.blur_prog:Optional[Program] = None
+        self.vao:Optional[VertexArray] = None
+        self.blur_vao:Optional[VertexArray] = None
         self.reload_shaders()
-        self.vao      = self.ctx.vertex_array(self.prog, [])
-        self.blur_vao = self.ctx.vertex_array(self.blur_prog, [])
-
+        
+        self.tex: Optional[Texture] = None
+        self.blur_tex: Optional[Texture] = None
+        self.fbo:Optional[Framebuffer] = None
+        self.blur_fbo:Optional[Framebuffer] = None
         self.resize(1,1)
 
+
     def resize(self, width, height):
+        if self.tex is not None:
+            self.tex.release()
+        if self.blur_tex is not None:
+            self.blur_tex.release()
+        if self.fbo is not None:
+            self.fbo.release()
+        if self.blur_fbo is not None:
+            self.blur_fbo.release()
+
+
         half_w = max(1, width // 2)
         half_h = max(1, height // 2)
 
@@ -45,10 +61,15 @@ class SSAOPass(Pass):
         self.blur_fbo = self.ctx.framebuffer(color_attachments=[self.blur_tex])
 
     def reload_shaders(self):
-        if isinstance(self.prog, Program):
+        if self.prog is not None:
             self.prog.release()
-        if isinstance(self.blur_prog, Program):
+        if self.blur_prog is not None:
             self.blur_prog.release()
+        if self.vao is not None:
+            self.vao.release()
+        if self.blur_vao is not None:
+            self.blur_vao.release()
+
         self.prog = self.load_program_fn(
             vertex_shader='shaders/deferred_lighting.vert',
             fragment_shader='shaders/ssao.frag',
@@ -57,6 +78,9 @@ class SSAOPass(Pass):
             vertex_shader='shaders/deferred_lighting.vert',
             fragment_shader='shaders/ssao_blur.frag',
         )
+        
+        self.vao      = self.ctx.vertex_array(self.prog, [])
+        self.blur_vao = self.ctx.vertex_array(self.blur_prog, [])
 
     def render(self, g_position:moderngl.Texture, g_normal:moderngl.Texture, view, proj):
         # half-res viewport
