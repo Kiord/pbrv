@@ -43,6 +43,7 @@ class ShadowPass(Pass):
         self.fbo: Framebuffer = self.ctx.framebuffer(depth_attachment=self.depth_tex)
 
         self.prog = self.ctx.program(
+            vertex_shader=
             """
             #version 330 core
 
@@ -55,6 +56,13 @@ class ShadowPass(Pass):
                 gl_Position = u_lightViewProj * u_model * vec4(in_position, 1.0);
             }
             """,
+            fragment_shader=
+            """
+            #version 330 core
+
+            void main() {
+            }
+            """
 
         )
 
