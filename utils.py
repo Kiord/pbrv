@@ -160,8 +160,8 @@ def uv_sphere(n_lat=32, n_lon=64, dtype=np.float32):
     c = a + row
     d = c + 1
 
-    f1 = np.stack([a, c, b], axis=2).reshape(-1, 3)
-    f2 = np.stack([b, c, d], axis=2).reshape(-1, 3)
+    f1 = np.stack([a, b, c], axis=2).reshape(-1, 3)
+    f2 = np.stack([b, d, c], axis=2).reshape(-1, 3)
     mid_faces = np.vstack([f1, f2]).astype(np.int32, copy=False)
    
     bottom_faces = np.stack([south_start + j, last_ring_start + j, last_ring_start + j + 1],

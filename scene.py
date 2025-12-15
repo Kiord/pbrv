@@ -4,6 +4,7 @@ import moderngl
 from moderngl import Context
 from utils import load_rgb_image_auto, uv_sphere
 from constants import MAX_LUMINANCE, EPSILON
+from sun_extraction import SunExtractSettings, SunExtraction, extract_sun_from_cubemap, extract_sun_from_panorama
 
 import numpy as np
 import trimesh as tm
@@ -150,7 +151,6 @@ class Mesh:
     def create_sphere(cls):
         v, f, uv = uv_sphere()
         t = cls._compute_tangents(v, v, uv, f)
-        print(v.shape, uv.shape, t.shape, f.shape)
         return cls(v, v, f, uv, t)
 
     @classmethod
@@ -286,4 +286,32 @@ class Scene:
     envmap: Optional[EnvMap]=None
     point_light: Optional[PointLight]=None
     dir_light: Optional[DirectionalLight]=None
+    sun: Optional[SunExtraction]=None
 
+    def auto_sun(self, settings: SunExtractSettings = SunExtractSettings())->None:
+        if self.dir_light is not None:
+            print("[Warning] Calling auto sun will overwrite the existing directional light.")
+
+        if self.envmap is None:
+            self.sun = None
+            return
+        
+        if isinstance(self.envmap, Panorama):
+            sun = extract_sun_from_panorama(self.envmap.image, settings)
+        else:
+            faces = [
+                self.envmap.right, self.envmap.left,
+                self.envmap.top, self.envmap.bottom,
+                self.envmap.front, self.envmap.back,
+            ]  #  +X,-X,+Y,-Y,+Z,-Z
+            sun = extract_sun_from_cubemap(faces, settings)
+
+        self.sun = sun
+        if sun is None:
+            return
+
+        color = 10 * sun.color_integral # more realistic when boosted...
+        self.dir_light = DirectionalLight(
+            direction=-sun.direction.astype(np.float32),
+            color=color.astype(np.float32),
+        )

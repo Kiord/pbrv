@@ -55,7 +55,8 @@ class Viewer(WindowConfig):
         self.lighting_pass = LightingPass(
             self.ctx, 
             self.load_program, 
-            self.scene.envmap)
+            self.scene.envmap,
+            self.scene.sun)
             
         # Camera / Interaction
         
@@ -152,13 +153,14 @@ if __name__ == '__main__':
         roughness_path=f'resources/textures/{asset_name}_r.jpg',
         metallic_path=f'resources/textures/{asset_name}_m.jpg',
         emissive_path=f'resources/textures/{asset_name}_e.jpg',
-        #ambient_occlusion_path=f'resources/textures/{asset_name}_ao.jpg',
+        ambient_occlusion_path=f'resources/textures/{asset_name}_ao.jpg',
     )
-    envmap = Panorama.from_path('resources/panoramas/forest2.exr')
+    envmap = Panorama.from_path('resources/panoramas/forest1.exr')
 
     point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
     dir_light = None#DirectionalLight((1,1,1), (1, -1, 1))
-
-    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light,dir_light=dir_light)
-    Viewer.use_ssao = True
+    scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light,dir_light=dir_light)
+    scene.auto_sun()
+    Viewer.scene = scene
+    #Viewer.use_ssao = True
     run_window_config(Viewer)

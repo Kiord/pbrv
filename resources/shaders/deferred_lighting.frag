@@ -404,7 +404,7 @@ void main()
         albedo, roughness, metallic, ao, F0
     );
 
-    vec3 color = Lo_direct + Lo_ibl;
+    vec3 color =  Lo_direct + Lo_ibl;
 
     color += texture(gEmissive, v_uv).rgb;
 

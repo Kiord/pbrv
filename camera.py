@@ -20,9 +20,9 @@ class Camera:
         fov_deg: float = 60.0,
         aspect: float = 16.0 / 9.0,
         near: float = 0.001,
-        far: float = 10.0,
+        far: float = 22.0,
         min_distance: float = 0.005,
-        max_distance: float = 5.0,
+        max_distance: float = 20.0,
         zoom_speed: float = 0.5,
         **kwargs,
     ):

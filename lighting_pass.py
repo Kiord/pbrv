@@ -8,6 +8,7 @@ from constants import TexUnit, TONE_MAPPING_IDS
 from utils import Pass, safe_set_uniform
 from gbuffer import GBuffer
 from scene import EnvMap, PointLight, DirectionalLight
+from sun_extraction import SunExtraction
 from ibl import EnvironmentMapPrecomputer
 
 class LightingPass(Pass):
@@ -16,6 +17,7 @@ class LightingPass(Pass):
         ctx: Context,
         load_program_fn,
         envmap:Optional[EnvMap],
+        to_exclude_sun:Optional[SunExtraction]
     ):
         super().__init__(ctx, load_program_fn)
         
@@ -26,7 +28,8 @@ class LightingPass(Pass):
         if envmap is not None:
             precomp = EnvironmentMapPrecomputer(self.ctx)
             env_tex = envmap.to_gl(self.ctx)
-            self.background_tex, self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(env_tex, release=True)
+            self.background_tex, self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(
+                env_tex, release=True, to_exclude_sun=to_exclude_sun)
 
         self.prog: Optional[Program] = None
         self.vao: Optional[VertexArray] = None
