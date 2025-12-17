@@ -17,10 +17,11 @@ uniform float u_ssao_intensity;
 
 void main()
 {
-    vec3 worldPos    = texture(gPosition, v_uv).xyz;
+    vec4 worldPos4    = texture(gPosition, v_uv);
+    vec3 worldPos    = worldPos4.xyz;
     vec3 worldNormal = texture(gNormal,   v_uv).xyz;
 
-    if (worldPos == vec3(0.0)) {
+    if (worldPos4.a < 0.5) {
         aoOut = 1.0;
         return;
     }
@@ -48,10 +49,11 @@ void main()
             offsetUV.y < 0.0 || offsetUV.y > 1.0)
             continue;
 
-        vec3 sampleWorld = texture(gPosition, offsetUV).xyz;
-        if (sampleWorld.x > 2.0) 
+        vec4 worldPos4 = texture(gPosition, offsetUV);
+        vec3 worldPos = worldPos4.xyz;
+        if (worldPos4.a < 0.5) 
             continue;
-        vec3 sampleView  = (u_view * vec4(sampleWorld, 1.0)).xyz;
+        vec3 sampleView  = (u_view * vec4(worldPos, 1.0)).xyz;
 
         float rangeCheck = smoothstep(0.0, 1.0,
                                       u_ssao_radius / abs(posView.z - sampleView.z));

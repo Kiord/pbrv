@@ -19,6 +19,7 @@ class GBuffer:
 
     def __post_init__(self) -> None:
         self._create_resources()
+        self.resize(1, 1)
 
     @property
     def size(self) -> Tuple[int, int]:
@@ -82,14 +83,12 @@ class GBuffer:
             alignment=1,
         )
 
-        pos = np.frombuffer(raw, dtype=np.float16)
+        world_pos4 = np.frombuffer(raw, dtype=np.float16).astype(np.float32)
 
-        if pos.size < 3:
+        if world_pos4.size < 4:
             return None
 
-        world_pos = pos[:3].astype(np.float32)
-
-        if np.any(world_pos>1.1):
+        if world_pos4[3] < 0.5:
             return None
 
-        return world_pos
+        return world_pos4[:3]

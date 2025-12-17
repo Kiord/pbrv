@@ -1,7 +1,7 @@
 from typing import Optional, Tuple
 
 import moderngl
-from moderngl import Context, Program, VertexArray, Texture, TextureCube
+from moderngl import Context, Program, VertexArray, Texture, TextureCube, Framebuffer
 import numpy as np
 
 from constants import TexUnit, TONE_MAPPING_IDS
@@ -28,17 +28,54 @@ class LightingPass(Pass):
         if envmap is not None:
             precomp = EnvironmentMapPrecomputer(self.ctx)
             env_tex = envmap.to_gl(self.ctx)
-            self.background_tex, self.irradiance_tex, self.specular_tex, self.num_specular_mips = precomp(
-                env_tex, release=True, to_exclude_sun=to_exclude_sun)
+            (
+                self.background_tex,
+                self.irradiance_tex,
+                self.specular_tex,
+                self.num_specular_mips,
+            ) = precomp(env_tex, release=True, to_exclude_sun=to_exclude_sun)
 
         self.prog: Optional[Program] = None
         self.vao: Optional[VertexArray] = None
 
+        self.tex: Optional[Texture] = None
+        self.fbo: Optional[Framebuffer] = None
+
         self.reload_shaders()
-        
-    def reload_shaders(self) -> None:
-        if isinstance(self.prog, Program):
+        self.resize(1,1)
+    
+    @property
+    def output_texture(self) -> Optional[Texture]:
+        return self.tex
+    
+    def release(self) -> None:
+        if self.vao is not None:
+            self.vao.release()
+            self.vao = None
+        if self.prog is not None:
             self.prog.release()
+            self.prog = None
+
+        if self.fbo is not None:
+            self.fbo.release()
+            self.fbo = None
+        if self.tex is not None:
+            self.tex.release()
+            self.tex = None
+
+        for t in (self.background_tex, self.irradiance_tex, self.specular_tex):
+            if t is not None:
+                t.release()
+        self.background_tex = None
+        self.irradiance_tex = None
+        self.specular_tex = None
+        self.num_specular_mips = 0
+
+    def reload_shaders(self) -> None:
+        if self.prog is not None:
+            self.prog.release()
+        if self.vao is not None:
+            self.vao.release()
 
         self.prog = self.load_program_fn(
             vertex_shader="shaders/deferred_lighting.vert",
@@ -57,7 +94,24 @@ class LightingPass(Pass):
         safe_set_uniform(self.prog, "u_specular_env", TexUnit.ENV_SPECULAR)
         safe_set_uniform(self.prog, "u_shadowMap", TexUnit.SHADOW_MAP)
 
-        
+    
+    def resize(self, width: int, height: int) -> None:
+        # if width <= 0 or height <= 0:
+        #     return
+
+        if self.fbo is not None:
+            self.fbo.release()
+            self.fbo = None
+        if self.tex is not None:
+            self.tex.release()
+            self.tex = None
+
+        self.tex = self.ctx.texture((width, height), components=4, dtype="f2")
+        self.tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        self.tex.repeat_x = False
+        self.tex.repeat_y = False
+
+        self.fbo = self.ctx.framebuffer(color_attachments=[self.tex])   
 
     def render(
         self,
@@ -73,12 +127,11 @@ class LightingPass(Pass):
         env_lod_factor:float,
         use_ssao: bool,
         specular_tint:float,
-        tone_mapping: str,
-        exposure: float,
         time_value: float,
         window_size: Tuple[int, int],
     ) -> None:
-        self.ctx.screen.use()
+        
+        self.fbo.use()
         w, h = window_size
         self.ctx.viewport = (0, 0, w, h)
         self.ctx.disable(moderngl.DEPTH_TEST)
@@ -89,15 +142,11 @@ class LightingPass(Pass):
         gbuffer.albedo.use(location=TexUnit.GBUFFER_ALBEDO)
         gbuffer.rmaos.use(location=TexUnit.GBUFFER_RMAOS)
         gbuffer.emissive.use(location=TexUnit.GBUFFER_EMISSIVE)
-       
-        
+     
 
         safe_set_uniform(self.prog, "u_viewPos", tuple(eye_pos))
 
         safe_set_uniform(self.prog, "u_specularTint", min(1, max(0, specular_tint)))
-        tone_mapping_id = TONE_MAPPING_IDS.get(tone_mapping, 0)
-        safe_set_uniform(self.prog, "u_tone_mapping_id", tone_mapping_id)
-        safe_set_uniform(self.prog, "u_exposure", exposure)
         safe_set_uniform(self.prog, "u_time", time_value)
         
         safe_set_uniform(self.prog, "u_use_ssao", use_ssao)

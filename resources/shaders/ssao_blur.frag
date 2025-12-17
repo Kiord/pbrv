@@ -12,11 +12,12 @@ uniform float u_blur_normal_sigma;
 
 void main()
 {
-    vec3 centerPos = texture(gPosition, v_uv).xyz;
+    vec4 centerPos4 = texture(gPosition, v_uv);
+    vec3 centerPos = centerPos4.xyz;
     vec3 centerN   = normalize(texture(gNormal,   v_uv).xyz);
     float centerAO = texture(u_ssao,    v_uv).r;
 
-    if (centerPos.x > 2.0) {
+    if (centerPos4.a < 0.5) {
         aoBlur = 1.0;
         return;
     }
@@ -34,10 +35,11 @@ void main()
             vec2 uv = v_uv + offset;
 
             float aoSample = texture(u_ssao, uv).r;
-            vec3 posSample = texture(gPosition, uv).xyz;
+            vec4 posSample4 = texture(gPosition, uv);
+            vec3 posSample = posSample4.xyz;
             vec3 nSample   = normalize(texture(gNormal,   uv).xyz);
 
-            if (posSample.x > 2.0)
+            if (posSample4.a < 0.5)
                 continue;
 
             float posDiff = length(centerPos - posSample);

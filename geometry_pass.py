@@ -122,6 +122,7 @@ class GeometryPass(Pass):
             dtype="f4",
         )
         tex.build_mipmaps()
+        #tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
         tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
         tex.repeat_x = True
         tex.repeat_y = True
@@ -154,7 +155,7 @@ class GeometryPass(Pass):
         self.ctx.viewport = (0, 0, gbuffer.width, gbuffer.height)
         self.ctx.enable(moderngl.DEPTH_TEST)
         self.ctx.disable(moderngl.CULL_FACE)
-        self.ctx.clear(100.0, 0.0, 0.0, 1.0)
+        self.ctx.clear(0.0, 0.0, 0.0, 0.0)
 
         self.prog["u_model"].write(np.asarray(model_matrix, dtype="f4").tobytes())
         self.prog["u_view"].write(np.asarray(view_matrix, dtype="f4").tobytes())

@@ -7,6 +7,7 @@ from gbuffer import GBuffer
 from geometry_pass import GeometryPass
 from lighting_pass import LightingPass
 from shadow_pass import ShadowPass
+from post_pass import PostProcessingPass
 
 from input_gestures import CameraInputController
 
@@ -57,6 +58,8 @@ class Viewer(WindowConfig):
             self.load_program, 
             self.scene.envmap,
             self.scene.sun)
+        
+        self.post_pass = PostProcessingPass(self.ctx, self.load_program)
             
         # Camera / Interaction
         
@@ -67,8 +70,9 @@ class Viewer(WindowConfig):
 
     def reload_shaders(self):
         self.geometry_pass.reload_shaders()
-        self.ssao_pass.reload_shaders()
+        self.ssao_pass.reload_shaders() 
         self.lighting_pass.reload_shaders()
+        self.post_pass.reload_shaders()
 
     # -------------------------------------------------------------------------
     # Mesh / GBuffer
@@ -80,6 +84,8 @@ class Viewer(WindowConfig):
         self.camera.resize(width, height)
         self.gbuffer.resize(width, height)
         self.ssao_pass.resize(width, height)
+        self.lighting_pass.resize(width, height)
+        self.post_pass.resize(width, height)
 
     # -------------------------------------------------------------------------
     # Mouse / camera
@@ -137,11 +143,18 @@ class Viewer(WindowConfig):
             self.input.lod_factor,
             self.use_ssao,
             self.scene.material.specular_tint,
+            time,
+            self.wnd.size,
+        )
+
+        self.post_pass.render(
+            self.lighting_pass.output_texture,
+            self.gbuffer.emissive,
             self.tone_mapping,
             self.exposure,
             time,
             self.wnd.size,
-        )
+            )
 
 
 if __name__ == '__main__':
@@ -155,7 +168,7 @@ if __name__ == '__main__':
         emissive_path=f'resources/textures/{asset_name}_e.jpg',
         ambient_occlusion_path=f'resources/textures/{asset_name}_ao.jpg',
     )
-    envmap = Panorama.from_path('resources/panoramas/forest1.exr')
+    envmap = Panorama.from_path('resources/panoramas/shanghai.exr')
 
     point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
     dir_light = None#DirectionalLight((1,1,1), (1, -1, 1))
