@@ -1,0 +1,8 @@
+*.jpg
+*.jpeg
+*.png
+*.exr
+*.hdr
+*.obj
+.vscode
+__pycache__
