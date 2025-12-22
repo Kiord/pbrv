@@ -4,8 +4,7 @@ from trackball import Trackball
 from constants import UP, FRONT, EPSILON
 from typing import Tuple
 import math
-
-# New
+from functools import cached_property
 
 class Camera:
     """Pure camera model: pivot + distance + projection + view/pan/zoom.
@@ -38,45 +37,57 @@ class Camera:
         self.fov_deg = float(fov_deg)
         self.near = float(near)
         self.far = float(far)
+        self.aspect = float(aspect)
 
-        self.projection = matrix44.create_perspective_projection(
-            self.fov_deg, float(aspect), self.near, self.far
-        )
+        # self.projection = matrix44.create_perspective_projection(
+        #     self.fov_deg, float(aspect), self.near, self.far
+        # )
+
+        # self.view = 
+
+        self._proj = None
+        self._inv_proj = None
+        self._view = None
+        self._inv_view = None
+        self._up = None
+        self._eye = None
+        self._view_dirty = True
+        self._proj_dirty = True
+
+  
 
     # --- projection ---
     def resize(self, width: int, height: int):
         if height <= 0:
             height = 1
-        aspect = width / float(height)
-        self.projection = matrix44.create_perspective_projection(
-            self.fov_deg, aspect, self.near, self.far
-        )
+        self.aspect = width / float(height)
+        self._proj_dirty = True
 
     # --- navigation ---
     def set_pivot(self, new_pivot: Tuple[float, float, float]):
-        _, eye, _ = self.get_view()
         new_pivot = np.asanyarray(new_pivot, dtype=np.float32)
-        self.distance = float(np.linalg.norm(eye - new_pivot))
+        self.distance = float(np.linalg.norm(self._eye - new_pivot))
         self.pivot = new_pivot
+        self._view_dirty = True
 
     def zoom(self, delta: float):
         factor = 1.0 - self.zoom_speed * float(delta)
         self.distance *= factor
         self.distance = max(self.min_distance, min(self.max_distance, self.distance))
+        self._view_dirty = True
 
     def pan(self, dx: float, dy: float, width: int, height: int):
         if width <= 0 or height <= 0:
             return
 
-        _, eye, up = self.get_view()
 
-        fwd = self.pivot - eye
+        fwd = self.pivot - self._eye
         fwd_norm = float(np.linalg.norm(fwd))
         if fwd_norm < EPSILON:
             return
         fwd /= fwd_norm
 
-        right = np.cross(fwd, up)
+        right = np.cross(fwd, self._up)
         r_len = float(np.linalg.norm(right))
         if r_len < EPSILON:
             return
@@ -97,7 +108,17 @@ class Camera:
         pan_world = (-right * dx * world_per_pixel_x) + (up * dy * world_per_pixel_y)
         self.pivot += pan_world
 
-    def get_view(self):
+        self._view_dirty = True
+
+    
+    def _rebuild_proj(self):
+        self._proj = matrix44.create_perspective_projection(
+            self.fov_deg, self.aspect, self.near, self.far
+        )
+        self._inv_proj = np.linalg.inv(self._proj)
+        self._proj_dirty = False
+
+    def _rebuild_view_eye_up(self):
         if hasattr(self, 'get_quat'):
             quat = self.get_quat()
         else:
@@ -105,11 +126,47 @@ class Camera:
 
         offset = -FRONT * self.distance
         
-        eye = self.pivot + quaternion.apply_to_vector(quat, offset)
-        up = quaternion.apply_to_vector(quat, UP)
+        self._eye = self.pivot + quaternion.apply_to_vector(quat, offset)
+        self._up = quaternion.apply_to_vector(quat, UP)
 
-        view = matrix44.create_look_at(eye, self.pivot, up)
-        return view, eye, up
+        self._view = matrix44.create_look_at(self._eye, self.pivot, self._up)
+        self._inv_view = np.linalg.inv(self._view)
+
+    @property
+    def proj(self) -> np.ndarray:
+        if self._proj_dirty:
+            self._rebuild_proj()
+        return self._proj
+
+    @property
+    def inv_proj(self) -> np.ndarray:
+        if self._proj_dirty:
+            self._rebuild_proj()
+        return self._inv_proj
+
+    @property
+    def view(self) -> np.ndarray:
+        if self._view_dirty:
+            self._rebuild_view_eye_up()
+        return self._view
+
+    @property
+    def eye(self) -> np.ndarray:
+        if self._view_dirty:
+            self._rebuild_view_eye_up()
+        return self._eye
+    
+    @property
+    def up(self) -> np.ndarray:
+        if self._view_dirty:
+            self._rebuild_view_eye_up()
+        return self._up
+
+    @property
+    def inv_view(self) -> np.ndarray:
+        if self._view_dirty:
+            self._rebuild_view_eye_up()
+        return self._inv_view
 
 
 class TrackballCamera(Trackball, Camera):

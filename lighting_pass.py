@@ -120,8 +120,8 @@ class LightingPass(RenderPass):
         point_light: Optional[PointLight],
         dir_light: Optional[DirectionalLight],
         eye_pos: np.ndarray,
-        view_matrix: np.ndarray,
-        proj_matrix: np.ndarray,
+        inv_view: np.ndarray,
+        inv_proj: np.ndarray,
         env_matrix:np.ndarray,
         env_lod_factor:float,
         use_ssao: bool,
@@ -158,8 +158,8 @@ class LightingPass(RenderPass):
             self.background_tex.use(location=TexUnit.ENV_BACKGROUND)
             self.irradiance_tex.use(location=TexUnit.ENV_IRRADIANCE)
             self.specular_tex.use(location=TexUnit.ENV_SPECULAR)
-            safe_set_uniform(self.prog, "u_invView", np.linalg.inv(view_matrix).astype("f4"))
-            safe_set_uniform(self.prog, "u_invProj", np.linalg.inv(proj_matrix).astype("f4"))
+            safe_set_uniform(self.prog, "u_invView", inv_view.astype("f4"))
+            safe_set_uniform(self.prog, "u_invProj", inv_proj.astype("f4"))
             safe_set_uniform(self.prog, "u_envRotation", env_matrix.astype("f4"))
             safe_set_uniform(self.prog, "u_num_specular_mips", self.num_specular_mips)
             safe_set_uniform(self.prog, "u_env_lod", self.num_specular_mips * env_lod_factor)

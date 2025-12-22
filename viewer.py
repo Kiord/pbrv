@@ -111,8 +111,6 @@ class Viewer(WindowConfig):
     # Render
     # -------------------------------------------------------------------------
     def on_render(self, time: float, frame_time: float):
-        view, eye, _ = self.camera.get_view()
-        proj = self.camera.projection
 
         dir_light:Optional[DirectionalLight] = None
         if self.scene.dir_light is not None:
@@ -122,11 +120,11 @@ class Viewer(WindowConfig):
 
         # geometry
         self.geometry_pass.render(self.gbuffer, self.scene.material, 
-                                  self.input.model_matrix, view, proj, time)
+                                  self.input.model_matrix, self.camera.view, self.camera.proj, time)
 
         # ssao
         if self.use_ssao:
-            self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, view, proj)
+            self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, self.camera.view, self.camera.proj)
             self.ssao_pass.blur(self.gbuffer.position, self.gbuffer.normal)
 
         # lighting
@@ -136,9 +134,9 @@ class Viewer(WindowConfig):
             self.shadow_pass.depth_tex,
             self.scene.point_light,
             dir_light,
-            eye,
-            view, 
-            proj,
+            self.camera.eye,
+            self.camera.inv_view, 
+            self.camera.inv_proj,
             self.input.env_matrix,
             self.input.lod_factor,
             self.use_ssao,
