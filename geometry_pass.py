@@ -156,11 +156,11 @@ class GeometryPass(RenderPass):
         self.ctx.disable(moderngl.CULL_FACE)
         self.ctx.clear(0.0, 0.0, 0.0, 0.0)
 
-        self.prog["u_model"].write(np.asarray(model_matrix, dtype="f4").tobytes())
-        self.prog["u_view"].write(np.asarray(view_matrix, dtype="f4").tobytes())
-        self.prog["u_projection"].write(np.asarray(projection_matrix, dtype="f4").tobytes())
+        safe_set_uniform(self.prog, "u_model", model_matrix)
+        safe_set_uniform(self.prog, "u_view", view_matrix)
+        safe_set_uniform(self.prog, "u_projection", projection_matrix)
         normal_matrix = np.linalg.inv(model_matrix).T[:3, :3]
-        self.prog["u_normal_matrix"].write(np.asarray(normal_matrix, dtype="f4").tobytes())
+        safe_set_uniform(self.prog, "u_normal_matrix", normal_matrix)
 
         self._update_material_uniforms(material)
         safe_set_uniform(self.prog, "u_time", time_value)

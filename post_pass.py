@@ -5,7 +5,7 @@ import moderngl
 from moderngl import Context, Program, Texture, Framebuffer, VertexArray
 
 from utils import RenderPass, safe_set_uniform
-from constants import TONE_MAPPING_IDS#, SCREEN_VS
+from constants import TONE_MAPPING_IDS
 
 
 @dataclass

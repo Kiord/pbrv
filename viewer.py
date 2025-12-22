@@ -178,7 +178,7 @@ if __name__ == '__main__':
     point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
     dir_light = None#DirectionalLight((1,1,1), (1, -1, 1))
     scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light,dir_light=dir_light)
-    #scene.auto_sun()
+    scene.auto_sun()
     Viewer.scene = scene
-    #Viewer.use_ssao = True
+    Viewer.use_ssao = True
     run_window_config(Viewer)

@@ -6,13 +6,11 @@ import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
 import trimesh as tm
-from trimesh.visual.texture import TextureVisuals
-from trimesh.grouping import merge_vertices
 
 def safe_set_uniform(prog:Program, name: str, value: Any):
     if name in prog:
         if isinstance(value, np.ndarray):
-            prog[name].write(value.tobytes())
+            prog[name].write(value.astype(np.float32).tobytes())
         else:
             prog[name].value = value
         return

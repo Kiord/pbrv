@@ -42,28 +42,9 @@ class ShadowPass(RenderPass):
 
         self.fbo: Framebuffer = self.ctx.framebuffer(depth_attachment=self.depth_tex)
 
-        self.prog = self.ctx.program(
-            vertex_shader=
-            """
-            #version 330 core
-
-            in vec3 in_position;
-
-            uniform mat4 u_model;
-            uniform mat4 u_lightViewProj;
-
-            void main() {
-                gl_Position = u_lightViewProj * u_model * vec4(in_position, 1.0);
-            }
-            """,
-            fragment_shader=
-            """
-            #version 330 core
-
-            void main() {
-            }
-            """
-
+        self.prog = self.load_program_fn(
+            vertex_shader='shaders/shadow.vert',
+            fragment_shader='shaders/empty.frag',
         )
 
         self.vao: VertexArray = self.ctx.vertex_array(
