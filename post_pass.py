@@ -78,8 +78,8 @@ class PostProcessingPass(RenderPass):
         self.prefilter_vao = self.blur_vao = self.composite_vao = None
         self.seed_tex = None
         self.seed_fbo = None
-        self.pingpong_tex = [None, None]
-        self.pingpong_fbo = [None, None]
+        self.pingpong_tex = (None, None)
+        self.pingpong_fbo = (None, None)
         self._bloom_size = (0, 0)
 
     def reload_shaders(self) -> None:
