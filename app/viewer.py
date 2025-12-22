@@ -1,15 +1,18 @@
-from moderngl_window import WindowConfig, run_window_config
-from camera import TrackballCamera
 from typing import Optional
-from scene import Scene, Mesh, Material, Panorama, DirectionalLight, PointLight
-from ssao_pass import SSAOPass
-from gbuffer import GBuffer
-from geometry_pass import GeometryPass
-from lighting_pass import LightingPass
-from shadow_pass import ShadowPass
-from post_pass import PostProcessingPass
 
-from input_gestures import CameraInputController
+from moderngl_window import WindowConfig, run_window_config
+
+from core.camera import TrackballCamera
+from core.input_gestures import CameraInputController
+from core.scene import Scene, Mesh, Material, Panorama, DirectionalLight, PointLight
+
+from rendering.deferred_gl.gbuffer import GBuffer
+from rendering.deferred_gl.geometry_pass import GeometryPass
+from rendering.deferred_gl.lighting_pass import LightingPass
+from rendering.deferred_gl.shadow_pass import ShadowPass
+from rendering.deferred_gl.ssao_pass import SSAOPass
+from rendering.deferred_gl.post_pass import PostProcessingPass
+
 
 class Viewer(WindowConfig):
     title = "pbrv"

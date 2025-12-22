@@ -6,9 +6,9 @@ import numpy as np
 from pyrr import matrix44, matrix33, quaternion as Q
 from enum import Enum, auto
 
-from trackball import Trackball
-from camera import TrackballCamera
-from mouse import OSMouse
+from core.trackball import Trackball
+from core.camera import TrackballCamera
+from core.mouse import OSMouse
 from moderngl_window.context.base import BaseWindow
 
 

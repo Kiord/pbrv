@@ -4,8 +4,8 @@ from typing import Callable, Optional, Tuple
 import moderngl
 from moderngl import Context, Program, Texture, Framebuffer, VertexArray
 
-from utils import RenderPass, safe_set_uniform
-from constants import TONE_MAPPING_IDS
+from core.utils import RenderPass, safe_set_uniform
+from core.constants import TONE_MAPPING_IDS
 
 
 @dataclass

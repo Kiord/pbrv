@@ -4,12 +4,12 @@ import moderngl
 from moderngl import Context, Program, VertexArray, Texture, TextureCube, Framebuffer
 import numpy as np
 
-from constants import TexUnit, TONE_MAPPING_IDS
-from utils import RenderPass, safe_set_uniform
-from gbuffer import GBuffer
-from scene import EnvMap, PointLight, DirectionalLight
-from sun_extraction import SunExtraction
-from ibl import EnvironmentMapPrecomputer
+from core.constants import TexUnit, TONE_MAPPING_IDS
+from core.utils import RenderPass, safe_set_uniform
+from core.scene import EnvMap, PointLight, DirectionalLight
+from core.sun_extraction import SunExtraction
+from rendering.deferred_gl.ibl import EnvironmentMapPrecomputer
+from rendering.deferred_gl.gbuffer import GBuffer
 
 class LightingPass(RenderPass):
     def __init__(

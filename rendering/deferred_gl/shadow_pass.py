@@ -6,11 +6,10 @@ import numpy as np
 from moderngl import Buffer, Context, Framebuffer, Program, Texture, VertexArray
 
 from pyrr import matrix44, vector3, matrix33
-from constants import EPSILON, UP
 
-from scene import DirectionalLight
-
-from utils import RenderPass, safe_set_uniform
+from core.constants import EPSILON, UP
+from core.scene import DirectionalLight
+from core.utils import RenderPass, safe_set_uniform
 
 @dataclass
 class ShadowSettings:

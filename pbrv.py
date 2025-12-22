@@ -6,9 +6,9 @@ from typing import Optional, Tuple
 
 from moderngl_window import run_window_config
 
-from viewer import Viewer
-from scene import Scene, Material, Mesh, EnvMap, Panorama, CubeMap
-from constants import TONE_MAPPING_IDS
+from app.viewer import Viewer
+from core.scene import Scene, Material, Mesh, EnvMap, Panorama, CubeMap
+from core.constants import TONE_MAPPING_IDS
 
 def parse_value_or_path(
     value: Optional[str],

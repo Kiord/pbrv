@@ -4,11 +4,11 @@ import math
 
 import moderngl
 from moderngl import Context, Texture, TextureCube, ComputeShader
-from sun_extraction import SunExtraction
+from core.sun_extraction import SunExtraction
 import numpy as np
-from constants import EPSILON
+from core.constants import EPSILON
 
-from utils import safe_set_uniform
+from core.utils import safe_set_uniform
 
 @dataclass
 class PrefilterSettings:

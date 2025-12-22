@@ -5,10 +5,10 @@ import moderngl
 from moderngl import Context, Texture, Program, VertexArray, Buffer
 import numpy as np
 
-from constants import TexUnit
-from utils import RenderPass, safe_set_uniform
-from gbuffer import GBuffer
-from scene import Material
+from core.constants import TexUnit
+from core.utils import RenderPass, safe_set_uniform
+from core.scene import Material
+from rendering.deferred_gl.gbuffer import GBuffer
 
 
 @dataclass

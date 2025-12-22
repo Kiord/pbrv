@@ -2,14 +2,13 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 import moderngl
 from moderngl import Context
-from utils import uv_sphere
-from loading import load_image, load_image_auto, load_mesh
-from constants import MAX_LUMINANCE, EPSILON
-from sun_extraction import SunExtractSettings, SunExtraction, extract_sun_from_cubemap, extract_sun_from_panorama
+from core.utils import uv_sphere
+from core.loading import load_image, load_image_auto, load_mesh
+from core.constants import MAX_LUMINANCE, EPSILON
+from core.sun_extraction import SunExtractSettings, SunExtraction, extract_sun_from_cubemap, extract_sun_from_panorama
 
 import numpy as np
 import trimesh as tm
-import cv2
 import os
 
 

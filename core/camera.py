@@ -1,7 +1,7 @@
 import numpy as np
 from pyrr import matrix44, quaternion
-from trackball import Trackball
-from constants import UP, FRONT, EPSILON
+from core.trackball import Trackball
+from core.constants import UP, FRONT, EPSILON
 from typing import Tuple
 import math
 from functools import cached_property
