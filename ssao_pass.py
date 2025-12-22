@@ -4,7 +4,7 @@ from moderngl import Program, Texture, Framebuffer, VertexArray
 import numpy as np
 from constants import EPSILON, TexUnit
 from typing import Callable, Optional
-from utils import safe_set_uniform, Pass
+from utils import safe_set_uniform, RenderPass
 
 @dataclass
 class SSAOConfig:
@@ -16,7 +16,7 @@ class SSAOConfig:
     blur_normal_sigma: float = 32.0
 
 
-class SSAOPass(Pass):
+class SSAOPass(RenderPass):
     def __init__(self, ctx: moderngl.Context, load_program_fn:Callable, config: Optional[SSAOConfig]=None):
         super().__init__(ctx, load_program_fn)
         if config is None:
@@ -35,7 +35,6 @@ class SSAOPass(Pass):
         self.blur_tex: Optional[Texture] = None
         self.fbo:Optional[Framebuffer] = None
         self.blur_fbo:Optional[Framebuffer] = None
-        self.resize(1,1)
 
 
     def resize(self, width, height):
@@ -171,3 +170,18 @@ class SSAOPass(Pass):
         self.noise_tex.repeat_x = True
         self.noise_tex.repeat_y = True
         self.noise_tex.filter = (moderngl.NEAREST, moderngl.NEAREST)
+
+
+    def release(self):
+        self.tex.release() 
+        self.fbo.release()
+        self.blur_tex.release()
+        self.blur_fbo.release()
+        self.noise_tex.release()
+        self.fbo.release()
+        self.vao.release()
+        self.blur_vao.release()
+        self.fbo.release()
+        self.blur_fbo.release()
+        self.prog.release()
+        self.blur_prog.release()

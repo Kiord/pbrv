@@ -4,7 +4,7 @@ from typing import Callable, Optional, Tuple
 import moderngl
 from moderngl import Context, Program, Texture, Framebuffer, VertexArray
 
-from utils import Pass, safe_set_uniform
+from utils import RenderPass, safe_set_uniform
 from constants import TONE_MAPPING_IDS, SCREEN_VS
 
 
@@ -23,7 +23,7 @@ class BloomConfig:
     gamma: float = 2.2
 
 
-class PostProcessingPass(Pass):
+class PostProcessingPass(RenderPass):
     """
       1) prefilter (bright-pass from HDR + emissive boost) -> seed tex (half-res)
       2) ping-pong blur (separable) -> bloom tex (half-res)
@@ -56,7 +56,6 @@ class PostProcessingPass(Pass):
         self._bloom_size: Tuple[int, int] = (0, 0)
 
         self.reload_shaders()
-        self.resize(1,1)
 
     def release(self) -> None:
         for prog in (self.prefilter_prog, self.blur_prog, self.composite_prog):

@@ -5,13 +5,13 @@ from moderngl import Context, Program, VertexArray, Texture, TextureCube, Frameb
 import numpy as np
 
 from constants import TexUnit, TONE_MAPPING_IDS
-from utils import Pass, safe_set_uniform
+from utils import RenderPass, safe_set_uniform
 from gbuffer import GBuffer
 from scene import EnvMap, PointLight, DirectionalLight
 from sun_extraction import SunExtraction
 from ibl import EnvironmentMapPrecomputer
 
-class LightingPass(Pass):
+class LightingPass(RenderPass):
     def __init__(
         self,
         ctx: Context,
@@ -42,7 +42,6 @@ class LightingPass(Pass):
         self.fbo: Optional[Framebuffer] = None
 
         self.reload_shaders()
-        self.resize(1,1)
     
     @property
     def output_texture(self) -> Optional[Texture]:

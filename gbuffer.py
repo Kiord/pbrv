@@ -19,7 +19,6 @@ class GBuffer:
 
     def __post_init__(self) -> None:
         self._create_resources()
-        self.resize(1, 1)
 
     @property
     def size(self) -> Tuple[int, int]:
@@ -92,3 +91,14 @@ class GBuffer:
             return None
 
         return world_pos4[:3]
+    
+    def release(self):
+        self.position.release()
+        self.normal  .release()
+        self.albedo  .release()
+        self.rmaos   .release()
+        self.emissive.release()
+
+        self.depth.release()
+
+        self.fbo.release()

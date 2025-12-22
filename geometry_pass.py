@@ -6,7 +6,7 @@ from moderngl import Context, Texture, Program, VertexArray, Buffer
 import numpy as np
 
 from constants import TexUnit
-from utils import Pass, safe_set_uniform
+from utils import RenderPass, safe_set_uniform
 from gbuffer import GBuffer
 from scene import Material
 
@@ -16,7 +16,7 @@ class GeometryConfig:
     pass
 
 
-class GeometryPass(Pass):
+class GeometryPass(RenderPass):
 
     def __init__(
         self,
@@ -175,3 +175,13 @@ class GeometryPass(Pass):
         self.ao_tex.use(location=TexUnit.AO_MAP)
 
         self.vao.render()
+
+    def release(self):
+        self.albedo_tex.release()
+        self.normal_tex.release()
+        self.roughness_tex.release()
+        self.metallic_tex.release()
+        self.emissive_tex.release()
+        self.specular_tex.release()
+        self.ao_tex.release()
+        self.prog.release()

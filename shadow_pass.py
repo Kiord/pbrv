@@ -10,7 +10,7 @@ from constants import EPSILON, UP
 
 from scene import DirectionalLight
 
-from utils import Pass, safe_set_uniform
+from utils import RenderPass, safe_set_uniform
 
 @dataclass
 class ShadowSettings:
@@ -20,7 +20,7 @@ class ShadowSettings:
     min_near: float = 0.05  
 
 
-class ShadowPass(Pass):
+class ShadowPass(RenderPass):
 
     def __init__(
         self,
@@ -74,6 +74,8 @@ class ShadowPass(Pass):
             ibo,
         )
 
+    def resize(self, w, h):
+        pass
 
     def render(self, model_matrix: np.ndarray, dir_light: DirectionalLight, env_matrix:Optional[np.ndarray]=None) -> DirectionalLight:
         light_dir = np.asarray(dir_light.direction, dtype=np.float32)
@@ -116,3 +118,8 @@ class ShadowPass(Pass):
 
         proj = matrix44.create_orthogonal_projection(-R, R, -R, R, near, far, dtype=np.float32)
         return matrix44.multiply(view, proj)
+
+    def release(self):
+        self.depth_tex.release()
+        self.fbo.release()
+        self.vao.release()

@@ -156,9 +156,16 @@ class Viewer(WindowConfig):
             self.wnd.size,
             )
 
+    def on_close(self):
+        self.geometry_pass.release()
+        self.shadow_pass.release()
+        self.ssao_pass.release()
+        self.lighting_pass.release()
+        self.post_pass.release()
+        self.gbuffer.release()
 
 if __name__ == '__main__':
-    asset_name = 'helmet'
+    asset_name = 'drone'
     mesh = Mesh.from_path(f'resources/meshes/{asset_name}.obj')
     material = Material.from_map_paths(
         albedo_path=f'resources/textures/{asset_name}_a.jpg',
@@ -173,7 +180,7 @@ if __name__ == '__main__':
     point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
     dir_light = None#DirectionalLight((1,1,1), (1, -1, 1))
     scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light,dir_light=dir_light)
-    scene.auto_sun()
+    #scene.auto_sun()
     Viewer.scene = scene
     #Viewer.use_ssao = True
     run_window_config(Viewer)
