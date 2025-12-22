@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from typing import Tuple, Optional
 import moderngl
 from moderngl import Context
-from utils import load_rgb_image_auto, uv_sphere
+from utils import uv_sphere
+from loading import load_image, load_image_auto, load_mesh
 from constants import MAX_LUMINANCE, EPSILON
 from sun_extraction import SunExtractSettings, SunExtraction, extract_sun_from_cubemap, extract_sun_from_panorama
 
@@ -11,22 +12,6 @@ import trimesh as tm
 import cv2
 import os
 
-
-def _load_map(path: Optional[str]) -> Optional[np.ndarray]:
-    if path is None:
-        return None
-
-    print(f'[Material] Loading {path}')
-    img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-    if img is None:
-        print(f"[Material] Warning: could not load texture '{path}'")
-        return None
-    
-    if img.ndim == 3 and img.shape[2] == 3:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-    img = img.astype(np.float32) / 255.0
-    return img
 
 @dataclass
 class Light:
@@ -92,13 +77,13 @@ class Material:
         specular_path: Optional[str] = None,
         ambient_occlusion_path: Optional[str] = None,
     ):
-        self.albedo_map = _load_map(albedo_path)
-        self.normal_map = _load_map(normal_path)
-        self.roughness_map = _load_map(roughness_path)
-        self.metallic_map = _load_map(metallic_path)
-        self.emissive_map = _load_map(emissive_path)
-        self.specular_map = _load_map(specular_path)
-        self.ambient_occlusion_map = _load_map(ambient_occlusion_path)
+        self.albedo_map = load_image(albedo_path, 'f4')
+        self.normal_map = load_image(normal_path, 'f4')
+        self.roughness_map = load_image(roughness_path, 'f4')
+        self.metallic_map = load_image(metallic_path, 'f4')
+        self.emissive_map = load_image(emissive_path, 'f4')
+        self.specular_map = load_image(specular_path, 'f4')
+        self.ambient_occlusion_map = load_image(ambient_occlusion_path, 'f4')
 
 
 @dataclass
@@ -174,7 +159,6 @@ class Mesh:
             tangents = tangents  / (np.linalg.norm(tangents, axis=1, keepdims=True) + EPSILON)
 
         
-
         return cls(
             vertices=vertices.astype("f4"),
             normals=normals.astype("f4"),
@@ -185,7 +169,7 @@ class Mesh:
 
     @classmethod
     def from_path(cls, mesh_path: str):
-        mesh = tm.load_mesh(mesh_path)
+        mesh = load_mesh(mesh_path)
         return cls.from_trimesh(mesh)
       
 
@@ -201,7 +185,7 @@ class Panorama:
     
     @classmethod
     def from_path(cls, image_path: str):
-        image, _ = load_rgb_image_auto(image_path, out_f='f2')
+        image, _ = load_image_auto(image_path, out_f='f2')
         return cls(image=image)
     
     def to_gl(self, ctx:Context):
@@ -233,12 +217,12 @@ class CubeMap:
     
     @classmethod
     def from_path(cls, cubemap_dir: str):
-        front, suffix = load_rgb_image_auto(cubemap_dir + os.sep + 'front', out_f='f2') 
-        back, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'back', [suffix], out_f='f2') 
-        right, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'right', [suffix], out_f='f2') 
-        left, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'left', [suffix], out_f='f2') 
-        top, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'top', [suffix], out_f='f2') 
-        bottom, _ = load_rgb_image_auto(cubemap_dir + os.sep + 'bottom', [suffix], out_f='f2')
+        front, suffix = load_image_auto(cubemap_dir + os.sep + 'front', out_f='f2') 
+        back, _ = load_image_auto(cubemap_dir + os.sep + 'back', [suffix], out_f='f2') 
+        right, _ = load_image_auto(cubemap_dir + os.sep + 'right', [suffix], out_f='f2') 
+        left, _ = load_image_auto(cubemap_dir + os.sep + 'left', [suffix], out_f='f2') 
+        top, _ = load_image_auto(cubemap_dir + os.sep + 'top', [suffix], out_f='f2') 
+        bottom, _ = load_image_auto(cubemap_dir + os.sep + 'bottom', [suffix], out_f='f2')
         return cls(front=front, back=back, right=right, left=left, top=top, bottom=bottom)
     
     def to_gl(self, ctx:Context):
