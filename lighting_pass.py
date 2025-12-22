@@ -77,7 +77,7 @@ class LightingPass(RenderPass):
             self.vao.release()
 
         self.prog = self.load_program_fn(
-            vertex_shader="shaders/deferred_lighting.vert",
+            vertex_shader="shaders/screen.vert",
             fragment_shader="shaders/deferred_lighting.frag",
         )
         self.vao = self.ctx.vertex_array(self.prog, [])

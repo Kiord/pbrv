@@ -5,7 +5,7 @@ import moderngl
 from moderngl import Context, Program, Texture, Framebuffer, VertexArray
 
 from utils import RenderPass, safe_set_uniform
-from constants import TONE_MAPPING_IDS, SCREEN_VS
+from constants import TONE_MAPPING_IDS#, SCREEN_VS
 
 
 @dataclass
@@ -90,16 +90,15 @@ class PostProcessingPass(RenderPass):
             if vao is not None:
                 vao.release()
 
-        vs = "shaders/deferred_lighting.vert"
-
-        self.prefilter_prog = self.ctx.program(
-            SCREEN_VS, open('resources/shaders/bloom_prefilter.frag').read())
-        
-        self.blur_prog = self.ctx.program(
-            SCREEN_VS, open('resources/shaders/bloom_blur.frag').read())
-
-        self.composite_prog = self.ctx.program(
-            SCREEN_VS, open('resources/shaders/composite.frag').read())
+        self.prefilter_prog = self.load_program_fn(
+            vertex_shader='shaders/screen.vert', 
+            fragment_shader='shaders/bloom_prefilter.frag')
+        self.blur_prog = self.load_program_fn(
+            vertex_shader='shaders/screen.vert', 
+            fragment_shader='shaders/bloom_blur.frag')
+        self.composite_prog = self.load_program_fn(
+            vertex_shader='shaders/screen.vert', 
+            fragment_shader='shaders/composite.frag')
 
 
         self.prefilter_vao = self.ctx.vertex_array(self.prefilter_prog, [])

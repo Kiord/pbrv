@@ -122,7 +122,6 @@ class GeometryPass(RenderPass):
             dtype="f4",
         )
         tex.build_mipmaps()
-        #tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
         tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
         tex.repeat_x = True
         tex.repeat_y = True

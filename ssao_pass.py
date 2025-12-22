@@ -70,16 +70,25 @@ class SSAOPass(RenderPass):
             self.blur_vao.release()
 
         self.prog = self.load_program_fn(
-            vertex_shader='shaders/deferred_lighting.vert',
+            vertex_shader='shaders/screen.vert',
             fragment_shader='shaders/ssao.frag',
         )
         self.blur_prog = self.load_program_fn(
-            vertex_shader='shaders/deferred_lighting.vert',
+            vertex_shader='shaders/screen.vert',
             fragment_shader='shaders/ssao_blur.frag',
         )
         
         self.vao      = self.ctx.vertex_array(self.prog, [])
         self.blur_vao = self.ctx.vertex_array(self.blur_prog, [])
+
+
+        safe_set_uniform(self.prog, 'gPosition', TexUnit.GBUFFER_POSITION)
+        safe_set_uniform(self.prog, 'gNormal', TexUnit.GBUFFER_NORMAL) 
+        safe_set_uniform(self.prog, 'u_ssao_noise', TexUnit.SSAO_NOISE)
+
+        safe_set_uniform(self.blur_prog, 'u_ssao',    TexUnit.SSAO)
+        safe_set_uniform(self.blur_prog, 'gPosition', TexUnit.GBUFFER_POSITION)
+        safe_set_uniform(self.blur_prog, 'gNormal',   TexUnit.GBUFFER_NORMAL)
 
     def render(self, g_position:moderngl.Texture, g_normal:moderngl.Texture, view, proj):
         # half-res viewport
@@ -93,10 +102,6 @@ class SSAOPass(RenderPass):
         g_position.use(location=TexUnit.GBUFFER_POSITION)
         g_normal.use(location=TexUnit.GBUFFER_NORMAL)
         self.noise_tex.use(location=TexUnit.SSAO_NOISE)
-
-        safe_set_uniform(self.prog, 'gPosition', TexUnit.GBUFFER_POSITION)
-        safe_set_uniform(self.prog, 'gNormal', TexUnit.GBUFFER_NORMAL) 
-        safe_set_uniform(self.prog, 'u_ssao_noise', TexUnit.SSAO_NOISE)
 
         # matrices
         self.prog['u_view'].write(np.asarray(view, dtype='f4').tobytes())
@@ -129,9 +134,6 @@ class SSAOPass(RenderPass):
         g_position.use(location=TexUnit.GBUFFER_POSITION)
         g_normal.use(location=TexUnit.GBUFFER_NORMAL)
 
-        safe_set_uniform(self.blur_prog, 'u_ssao',    TexUnit.SSAO)
-        safe_set_uniform(self.blur_prog, 'gPosition', TexUnit.GBUFFER_POSITION)
-        safe_set_uniform(self.blur_prog, 'gNormal',   TexUnit.GBUFFER_NORMAL)
 
         safe_set_uniform(self.blur_prog, 'u_blur_depth_sigma',  self.cfg.blur_depth_sigma)
         safe_set_uniform(self.blur_prog, 'u_blur_normal_sigma', self.cfg.blur_normal_sigma)
