@@ -2,9 +2,10 @@ from typing import Optional, Callable
 
 from moderngl_window import WindowConfig, run_window_config
 
-
-from core.camera import TrackballCamera
+from core.camera import Camera
+from core.trackball import Trackball
 from core.input_gestures import CameraInputController
+
 from core.scene import Scene
 
 from rendering.api import FrameState, Renderer
@@ -35,7 +36,8 @@ class Viewer(WindowConfig):
             print("ERROR: No scene found. Exiting.")
             raise SystemExit(2)
 
-        self.camera = TrackballCamera(aspect=self.wnd.aspect_ratio)
+        self.orbit = Trackball(ball_size=0.8)
+        self.camera = Camera(aspect=self.wnd.aspect_ratio, orientation=self.orbit)
 
         self.renderer = self.renderer_factory(self.ctx, self.load_program)
         self.renderer.set_scene(self.scene)
@@ -44,6 +46,7 @@ class Viewer(WindowConfig):
         self.input = CameraInputController(
             self.wnd,
             self.camera,
+            self.orbit,
             pick_world_position=self.renderer.pick_world_position,
         )
 

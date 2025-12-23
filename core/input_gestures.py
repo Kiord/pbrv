@@ -1,3 +1,6 @@
+# core/input_gestures.py
+from __future__ import annotations
+
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional, Tuple, Protocol
@@ -7,7 +10,7 @@ from pyrr import matrix44, matrix33, quaternion as Q
 from enum import Enum, auto
 
 from core.trackball import Trackball
-from core.camera import TrackballCamera
+from core.camera import Camera
 from core.mouse import OSMouse
 from moderngl_window.context.base import BaseWindow
 
@@ -48,7 +51,6 @@ class DoubleClickDetector:
 
 
 class DragRotateGesture:
-    # click then drag
     def __init__(self):
         self._pending_rotate = False
         self._rotating = False
@@ -92,8 +94,8 @@ class Modifiers:
 
     def set_from(self, mods) -> None:
         self.shift = bool(getattr(mods, "shift", self.shift))
-        self.ctrl  = bool(getattr(mods, "ctrl",  self.ctrl))
-        self.alt   = bool(getattr(mods, "alt",   self.alt))
+        self.ctrl = bool(getattr(mods, "ctrl", self.ctrl))
+        self.alt = bool(getattr(mods, "alt", self.alt))
 
 
 class Manipulator(Protocol):
@@ -104,9 +106,9 @@ class Manipulator(Protocol):
 
 
 class OrbitManipulator:
-    # Left-drag orbit (Trackball API)
-    def __init__(self, camera: TrackballCamera):
+    def __init__(self, camera: Camera, orbit: Trackball):
         self.camera = camera
+        self.orbit = orbit
         self.gesture = DragRotateGesture()
 
     def cancel(self) -> None:
@@ -116,15 +118,16 @@ class OrbitManipulator:
         self.gesture.on_press(x, y, w, h)
 
     def on_drag(self, x: int, y: int, w: int, h: int) -> None:
-        self.gesture.on_drag(self.camera, x, y, w, h)
+        self.gesture.on_drag(self.orbit, x, y, w, h)
+        self.camera.mark_view_dirty()
 
     def on_release(self) -> None:
-        self.gesture.on_release(self.camera)
+        self.gesture.on_release(self.orbit)
+        self.camera.mark_view_dirty()
 
 
 class ArcballWorldManipulator:
-    # Left-drag rotates an object using a local Trackball
-    def __init__(self, camera: TrackballCamera, *, ball_size: float, env: bool):
+    def __init__(self, camera: Camera, *, ball_size: float, env: bool):
         self.camera = camera
         self.env = env
         self.tb = Trackball(ball_size=ball_size)
@@ -150,9 +153,9 @@ class ArcballWorldManipulator:
     def on_drag(self, x: int, y: int, w: int, h: int) -> None:
         self.gesture.on_drag(self.tb, x, y, w, h)
 
-        q_cam = self.camera.get_quat()
+        q_cam = self.camera.orientation.quat()
         q_cam_conj = Q.conjugate(q_cam)
-        q_world_delta = Q.cross(q_cam, Q.cross(self.tb.get_quat(), q_cam_conj))
+        q_world_delta = Q.cross(q_cam, Q.cross(self.tb.quat(), q_cam_conj))
 
         if not self.env:
             self.quat = Q.normalize(Q.cross(self._base_quat, q_world_delta))
@@ -175,7 +178,8 @@ class CameraInputController:
     def __init__(
         self,
         wnd: BaseWindow,
-        camera: TrackballCamera,
+        camera: Camera,
+        orbit: Trackball,
         zoom_sensitivity: float = 0.2,
         double_click_delay: float = 0.30,
         ball_size: float = 0.8,
@@ -194,7 +198,7 @@ class CameraInputController:
         self._panning = False
         self._active_mode = Mode.CAMERA
 
-        self._orbit = OrbitManipulator(camera)
+        self._orbit = OrbitManipulator(camera, orbit)
         self._model = ArcballWorldManipulator(camera, ball_size=ball_size, env=False)
         self._env = ArcballWorldManipulator(camera, ball_size=ball_size, env=True)
 
@@ -231,60 +235,48 @@ class CameraInputController:
     def _is_object(self, x: int, y: int) -> bool:
         if self._pick_world_position is None:
             return False
-        return self._pick_world_position(x, y) is not None
+        p = self._pick_world_position(x, y)
+        return p is not None
 
     def _on_double_click(self, x: int, y: int) -> None:
         if self._pick_world_position is None:
             return
-        picked_pos = self._pick_world_position(x, y)
-        if picked_pos is not None:
-            self.camera.set_pivot(picked_pos)
-            self.os_mouse.center()
+        p = self._pick_world_position(x, y)
+        if p is not None:
+            self.camera.set_pivot(p)
 
     def on_press(self, x: int, y: int, button) -> None:
-        w, h = self.wnd.size
+        self.modifiers.set_from(self.wnd.modifiers)
+        self._active_mode = self._choose_mode()
 
-        if button == self.wnd.mouse.left:
-            if self._is_object(x, y) and self.double.feed(x, y):
-                self._cancel_all_rotations()
-                self._active_mode = Mode.CAMERA
-                self._on_double_click(x, y)
-                return
-
-            self._active_mode = self._choose_mode()
-            self._active_manipulator().on_press(x, y, w, h)
+        if self.double.feed(x, y):
+            self._on_double_click(x, y)
+            self._cancel_all_rotations()
             return
 
         if button == self.wnd.mouse.right:
             self._panning = True
-            self._cancel_all_rotations()
             return
+
+        w, h = self.wnd.size
+        self._active_manipulator().on_press(x, y, w, h)
 
     def on_drag(self, x: int, y: int, dx: int, dy: int) -> None:
         w, h = self.wnd.size
-
         if self._panning:
             self.camera.pan(dx, dy, w, h)
             return
-
         self._active_manipulator().on_drag(x, y, w, h)
 
     def on_release(self, x: int, y: int, button) -> None:
-        if button == self.wnd.mouse.left:
-            self._active_manipulator().on_release()
-            self._active_mode = Mode.CAMERA
-            return
-
         if button == self.wnd.mouse.right:
             self._panning = False
             return
+        if button == self.wnd.mouse.left:
+            self._active_manipulator().on_release()
 
     def on_scroll(self, y_offset: float) -> None:
-        if self.modifiers.shift:
-            self.lod_factor += float(y_offset) * self._lod_factor_speed
-            self.lod_factor = float(min(1.0, max(0.0, self.lod_factor)))
-        else:
-            self.camera.zoom(float(y_offset) * self.zoom_sensitivity)
+        self.camera.zoom(-float(y_offset) * self.zoom_sensitivity)
 
     def on_key_event(self, key, action, modifiers) -> None:
         self.modifiers.set_from(modifiers)

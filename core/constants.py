@@ -1,8 +1,10 @@
 import numpy as np
+import math
 
 UP = np.array([0,1,0], dtype=np.float32)
 FRONT = np.array([0,0,-1], dtype=np.float32)
 EPSILON = 1e-8
+SQRT_TWO = math.sqrt(2.0)
 MAX_LUMINANCE = 100.0
 REL_LUMINANCE = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
 
