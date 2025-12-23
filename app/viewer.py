@@ -37,7 +37,7 @@ class Viewer(WindowConfig):
 
         self.camera = TrackballCamera(aspect=self.wnd.aspect_ratio)
 
-        self.renderer = self.renderer_factory()
+        self.renderer = self.renderer_factory(self.ctx, self.load_program)
         self.renderer.set_scene(self.scene)
         self.renderer.initialize(self.wnd.size)
 
@@ -93,7 +93,7 @@ class Viewer(WindowConfig):
 
 if __name__ == "__main__":
     from core.scene import Mesh, Material, Panorama, CubeMap
-    from rendering.deferred_gl.renderer import deferred_gl_renderer_factory
+    from rendering.registry import REGISTRY
 
     asset_name = "drone"
     mesh = Mesh.from_path(f"resources/meshes/{asset_name}.obj")
@@ -114,6 +114,6 @@ if __name__ == "__main__":
     Viewer.scene = scene
     Viewer.use_ssao = True
 
-    Viewer.renderer_factory = deferred_gl_renderer_factory
+    Viewer.renderer_factory = REGISTRY['deferred_gl']
 
     run_window_config(Viewer)

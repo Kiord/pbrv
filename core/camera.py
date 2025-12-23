@@ -81,13 +81,13 @@ class Camera:
             return
 
 
-        fwd = self.pivot - self._eye
+        fwd = self.pivot - self.eye
         fwd_norm = float(np.linalg.norm(fwd))
         if fwd_norm < EPSILON:
             return
         fwd /= fwd_norm
 
-        right = np.cross(fwd, self._up)
+        right = np.cross(fwd, self.up)
         r_len = float(np.linalg.norm(right))
         if r_len < EPSILON:
             return
@@ -131,6 +131,7 @@ class Camera:
 
         self._view = matrix44.create_look_at(self._eye, self.pivot, self._up)
         self._inv_view = np.linalg.inv(self._view)
+        self._view_dirty = False
 
     @property
     def proj(self) -> np.ndarray:

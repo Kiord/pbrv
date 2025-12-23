@@ -89,6 +89,9 @@ class Trackball:
         q_drag = quaternion.create_from_axis_rotation(axis, angle)
 
         self._quat = quaternion.cross(self._start_quat, q_drag)
+
+        if hasattr(self, '_view_dirty'):
+            self._view_dirty = True
         
 
     def end_rotate(self):

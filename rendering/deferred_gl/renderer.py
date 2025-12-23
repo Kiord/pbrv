@@ -10,7 +10,6 @@ from moderngl import Context
 from rendering.api import Renderer, FrameState
 
 from core.scene import Scene, DirectionalLight
-from app.viewer import Viewer
 
 from rendering.deferred_gl.gbuffer import GBuffer
 from rendering.deferred_gl.geometry_pass import GeometryPass
@@ -20,11 +19,9 @@ from rendering.deferred_gl.lighting_pass import LightingPass
 from rendering.deferred_gl.post_pass import PostProcessingPass
 from rendering.deferred_gl.gl_scene import GLMesh, upload_mesh
 
-def deferred_gl_renderer_factory(viewer: Viewer):
-    return DeferredGLRenderer(viewer.ctx, viewer.load_program)
 
 class DeferredGLRenderer(Renderer):
-    name: str = "DeferredGLRenderer"
+    name: str = "deferred_gl"
 
     def __init__(self, ctx: Context, load_program_fn: Callable[..., object]) -> None:
         self.ctx = ctx
