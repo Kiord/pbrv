@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from typing import Optional, Union, Sequence
+from typing import Optional, Union, Sequence, Tuple
 from pathlib import Path
 import trimesh as tm
 
@@ -37,7 +37,7 @@ def load_image_auto(
     base_path: Union[str, Path],
     ext_priority: Optional[Sequence[str]] = None,
     out_f:Optional[str]=None
-) -> np.ndarray:
+) -> Tuple[np.ndarray, str]:
     if ext_priority is None:
         ext_priority = [
             ".exr",

@@ -1,8 +1,8 @@
-from typing import Protocol, Any, Optional, Callable
+from typing import Any, Optional, Callable
 from moderngl import Program, Context
 import numpy as np
 
-class RenderPass(Protocol):
+class RenderPass:
     def __init__(self, ctx: Context, load_program_fn:Optional[Callable[..., Program]]=None):
         self.ctx = ctx
         if load_program_fn is None:

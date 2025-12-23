@@ -147,10 +147,14 @@ class DeferredGLRenderer(Renderer):
         )
 
         ssao_tex = None
+
+        
         if frame.use_ssao and self.ssao_pass is not None:
             self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, frame.camera.view, frame.camera.proj)
             self.ssao_pass.blur(self.gbuffer.position, self.gbuffer.normal)
             ssao_tex = self.ssao_pass.output_texture
+        
+        use_ssao = frame.use_ssao and (ssao_tex is not None)
 
         if self.lighting_pass is None:
             raise RuntimeError("LightingPass not initialized.")
@@ -165,7 +169,7 @@ class DeferredGLRenderer(Renderer):
             frame.camera.inv_proj,
             frame.env_matrix,
             frame.env_lod_factor,
-            frame.use_ssao,
+            use_ssao,
             scene.material.specular_tint,
             frame.time,
             frame.window_size,

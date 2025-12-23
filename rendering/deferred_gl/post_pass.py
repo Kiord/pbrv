@@ -50,8 +50,8 @@ class PostProcessingPass(RenderPass):
         self.seed_tex: Optional[Texture] = None
         self.seed_fbo: Optional[Framebuffer] = None
 
-        self.pingpong_tex: Tuple[Optional[Texture]] = [None, None]
-        self.pingpong_fbo: Tuple[Optional[Framebuffer]] = [None, None]
+        self.pingpong_tex: Tuple[Optional[Texture]] = (None, None)
+        self.pingpong_fbo: Tuple[Optional[Framebuffer]] = (None, None)
 
         self._bloom_size: Tuple[int, int] = (0, 0)
 
