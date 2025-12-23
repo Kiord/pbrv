@@ -180,7 +180,7 @@ class CameraInputController:
         wnd: BaseWindow,
         camera: Camera,
         orbit: Trackball,
-        zoom_sensitivity: float = 0.2,
+        zoom_sensitivity: float = 0.1,
         double_click_delay: float = 0.30,
         ball_size: float = 0.8,
         pick_world_position: Optional[Callable[[int, int], Optional[np.ndarray]]] = None,

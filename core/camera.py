@@ -55,7 +55,7 @@ class Camera:
         self._view_dirty = True
 
     def zoom(self, delta: float):
-        self.distance = max(0.01, self.distance + float(delta))
+        self.distance *= 1 + float(delta)
         self._view_dirty = True
 
     def pan(self, dx: float, dy: float, width: int, height: int):
