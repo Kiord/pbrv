@@ -63,7 +63,7 @@ class ShadowPass(RenderPass):
         light_dir = light_dir / (np.linalg.norm(light_dir) + EPSILON)
 
         if env_matrix is not None:
-            light_dir = matrix33.apply_to_vector(env_matrix, light_dir)
+            light_dir = matrix33.apply_to_vector(env_matrix.T, light_dir)
         light_view_proj = self._compute_light_view_proj(light_dir)
 
         self.fbo.use()
