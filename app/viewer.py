@@ -1,98 +1,61 @@
-from typing import Optional
+from typing import Optional, Callable
 
 from moderngl_window import WindowConfig, run_window_config
 
+
 from core.camera import TrackballCamera
 from core.input_gestures import CameraInputController
-from core.scene import Scene, Mesh, Material, Panorama, DirectionalLight, PointLight
+from core.scene import Scene
 
-from rendering.deferred_gl.gbuffer import GBuffer
-from rendering.deferred_gl.geometry_pass import GeometryPass
-from rendering.deferred_gl.lighting_pass import LightingPass
-from rendering.deferred_gl.shadow_pass import ShadowPass
-from rendering.deferred_gl.ssao_pass import SSAOPass
-from rendering.deferred_gl.post_pass import PostProcessingPass
+from rendering.api import FrameState, Renderer
 
 
 class Viewer(WindowConfig):
     title = "pbrv"
     window_size = (1280, 720)
-    resource_dir = 'resources'
+    resource_dir = "resources"
     vsync = True
-    use_ssao = False
 
     scene: Scene = None
+    use_ssao: bool = False
+    tone_mapping: str = "aces"
+    exposure: float = 1.0
 
-    tone_mapping = 'aces'
-    exposure = 1.0
+    renderer_factory: Callable[..., Renderer]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.wnd.set_icon('icons/moderngl.webp')
+        self.wnd.set_icon("icons/moderngl.webp")
 
-        if self.wnd.name == 'headless':
-            print('ERROR: headless mode not supported. Exiting.')
-            exit(1)
+        if self.wnd.name == "headless":
+            print("ERROR: headless mode not supported. Exiting.")
+            raise SystemExit(1)
 
         if self.scene is None:
-            print('ERROR: No scene found. Exiting.')
-            exit(2)
-        
-        # --- mesh ---
-        vbo, ibo = self.scene.mesh.to_gl(self.ctx)
+            print("ERROR: No scene found. Exiting.")
+            raise SystemExit(2)
 
-        # --- Passes ---
-        self.gbuffer = GBuffer(self.ctx, *self.window_size)
+        self.camera = TrackballCamera(aspect=self.wnd.aspect_ratio)
 
-        self.geometry_pass = GeometryPass(
-            self.ctx,
-            self.load_program,
-            vbo,
-            ibo,
-            self.scene.material,
+        self.renderer = self.renderer_factory()
+        self.renderer.set_scene(self.scene)
+        self.renderer.initialize(self.wnd.size)
+
+        self.input = CameraInputController(
+            self.wnd,
+            self.camera,
+            pick_world_position=self.renderer.pick_world_position,
         )
 
-        self.ssao_pass = SSAOPass(self.ctx, self.load_program)
-
-        self.shadow_pass = ShadowPass(self.ctx, self.load_program, vbo, ibo)
-
-        self.lighting_pass = LightingPass(
-            self.ctx, 
-            self.load_program, 
-            self.scene.envmap,
-            self.scene.sun)
-        
-        self.post_pass = PostProcessingPass(self.ctx, self.load_program)
-            
-        # Camera / Interaction
-        
-        self.camera = TrackballCamera(aspect=self.wnd.aspect_ratio)
-        
-        self.input = CameraInputController(self.wnd, self.camera, 
-                                           sample_world_position=self.gbuffer.sample_world_position)
-
     def reload_shaders(self):
-        self.geometry_pass.reload_shaders()
-        self.ssao_pass.reload_shaders() 
-        self.lighting_pass.reload_shaders()
-        self.post_pass.reload_shaders()
+        if hasattr(self.renderer, "reload_shaders"):
+            self.renderer.reload_shaders()
 
-    # -------------------------------------------------------------------------
-    # Mesh / GBuffer
-    # -------------------------------------------------------------------------
-
-
-    def on_resize(self, width: int, height: int):   
+    def on_resize(self, width: int, height: int):
         self.ctx.viewport = (0, 0, width, height)
         self.camera.resize(width, height)
-        self.gbuffer.resize(width, height)
-        self.ssao_pass.resize(width, height)
-        self.lighting_pass.resize(width, height)
-        self.post_pass.resize(width, height)
+        self.renderer.resize((width, height))
 
-    # -------------------------------------------------------------------------
-    # Mouse / camera
-    # -------------------------------------------------------------------------
     def on_mouse_press_event(self, x, y, button):
         self.input.on_press(x, y, button)
 
@@ -110,78 +73,47 @@ class Viewer(WindowConfig):
         if key == self.wnd.keys.F5 and action == self.wnd.keys.ACTION_PRESS:
             self.reload_shaders()
 
-    # -------------------------------------------------------------------------
-    # Render
-    # -------------------------------------------------------------------------
     def on_render(self, time: float, frame_time: float):
-
-        dir_light:Optional[DirectionalLight] = None
-        if self.scene.dir_light is not None:
-            dir_light = self.shadow_pass.render(self.input.model_matrix, 
-                                                self.scene.dir_light, 
-                                                self.input.env_matrix)
-
-        # geometry
-        self.geometry_pass.render(self.gbuffer, self.scene.material, 
-                                  self.input.model_matrix, self.camera.view, self.camera.proj, time)
-
-        # ssao
-        if self.use_ssao:
-            self.ssao_pass.render(self.gbuffer.position, self.gbuffer.normal, self.camera.view, self.camera.proj)
-            self.ssao_pass.blur(self.gbuffer.position, self.gbuffer.normal)
-
-        # lighting
-        self.lighting_pass.render(
-            self.gbuffer,
-            self.ssao_pass.output_texture,
-            self.shadow_pass.depth_tex,
-            self.scene.point_light,
-            dir_light,
-            self.camera.eye,
-            self.camera.inv_view, 
-            self.camera.inv_proj,
-            self.input.env_matrix,
-            self.input.lod_factor,
-            self.use_ssao,
-            self.scene.material.specular_tint,
-            time,
-            self.wnd.size,
+        frame = FrameState(
+            time=float(time),
+            camera=self.camera,
+            model_matrix=self.input.model_matrix,
+            env_matrix=self.input.env_matrix,
+            exposure=float(self.exposure),
+            tone_mapping=str(self.tone_mapping),
+            env_lod_factor=float(self.input.lod_factor) if self.input.lod_factor is not None else None,
+            use_ssao=bool(self.use_ssao),
+            window_size=self.wnd.size,
         )
-
-        self.post_pass.render(
-            self.lighting_pass.output_texture,
-            self.gbuffer.emissive,
-            self.tone_mapping,
-            self.exposure,
-            time,
-            self.wnd.size,
-            )
+        self.renderer.render(frame)
 
     def on_close(self):
-        self.geometry_pass.release()
-        self.shadow_pass.release()
-        self.ssao_pass.release()
-        self.lighting_pass.release()
-        self.post_pass.release()
-        self.gbuffer.release()
+        self.renderer.shutdown()
 
-if __name__ == '__main__':
-    asset_name = 'drone'
-    mesh = Mesh.from_path(f'resources/meshes/{asset_name}.obj')
+
+if __name__ == "__main__":
+    from core.scene import Mesh, Material, Panorama, CubeMap
+    from rendering.deferred_gl.renderer import deferred_gl_renderer_factory
+
+    asset_name = "drone"
+    mesh = Mesh.from_path(f"resources/meshes/{asset_name}.obj")
     material = Material.from_map_paths(
-        albedo_path=f'resources/textures/{asset_name}_a.jpg',
-        normal_path=f'resources/textures/{asset_name}_n.jpg',
-        roughness_path=f'resources/textures/{asset_name}_r.jpg',
-        metallic_path=f'resources/textures/{asset_name}_m.jpg',
-        emissive_path=f'resources/textures/{asset_name}_e.jpg',
-        ambient_occlusion_path=f'resources/textures/{asset_name}_ao.jpg',
+        albedo_path=f"resources/textures/{asset_name}_a.jpg",
+        normal_path=f"resources/textures/{asset_name}_n.jpg",
+        roughness_path=f"resources/textures/{asset_name}_r.jpg",
+        metallic_path=f"resources/textures/{asset_name}_m.jpg",
+        emissive_path=f"resources/textures/{asset_name}_e.jpg",
+        ambient_occlusion_path=f"resources/textures/{asset_name}_ao.jpg",
     )
-    envmap = Panorama.from_path('resources/panoramas/shanghai.exr')
+    #envmap = Panorama.from_path("resources/panoramas/shanghai.exr")
+    envmap = CubeMap.from_path("resources/cubemaps/learnopengl")
 
-    point_light = None#PointLight(position=(1.0,1.0,1.0), color=(5.0,5.0,5.0))
-    dir_light = None#DirectionalLight((1,1,1), (1, -1, 1))
-    scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light,dir_light=dir_light)
+    scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=None, dir_light=None)
     scene.auto_sun()
+
     Viewer.scene = scene
     Viewer.use_ssao = True
+
+    Viewer.renderer_factory = deferred_gl_renderer_factory
+
     run_window_config(Viewer)

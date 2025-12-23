@@ -9,7 +9,9 @@ from pyrr import matrix44, vector3, matrix33
 
 from core.constants import EPSILON, UP
 from core.scene import DirectionalLight
-from core.utils import RenderPass, safe_set_uniform
+
+from rendering.deferred_gl.utils import RenderPass, safe_set_uniform
+from rendering.deferred_gl.gl_scene import GLMesh
 
 @dataclass
 class ShadowSettings:
@@ -25,8 +27,7 @@ class ShadowPass(RenderPass):
         self,
         ctx: Context,
         load_program_fn,
-        vbo: Buffer,
-        ibo: Buffer,
+        mesh: GLMesh,
         settings: Optional[ShadowSettings] = None,
     ) -> None:
         super().__init__(ctx, load_program_fn)
@@ -49,9 +50,9 @@ class ShadowPass(RenderPass):
         self.vao: VertexArray = self.ctx.vertex_array(
             self.prog,
             [
-                (vbo, "3f 32x", "in_position")
+                (mesh.vbo, "3f 32x", "in_position")
             ],
-            ibo,
+            mesh.ibo,
         )
 
     def resize(self, w, h):

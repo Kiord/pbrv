@@ -179,7 +179,7 @@ class CameraInputController:
         zoom_sensitivity: float = 0.2,
         double_click_delay: float = 0.30,
         ball_size: float = 0.8,
-        sample_world_position: Optional[Callable[[int, int], Optional[np.ndarray]]] = None,
+        pick_world_position: Optional[Callable[[int, int], Optional[np.ndarray]]] = None,
     ):
         self.wnd = wnd
         self.camera = camera
@@ -189,7 +189,7 @@ class CameraInputController:
         self.double = DoubleClickDetector(max_delay=float(double_click_delay))
 
         self.modifiers = Modifiers()
-        self._sample_world_position = sample_world_position
+        self._pick_world_position = pick_world_position
 
         self._panning = False
         self._active_mode = Mode.CAMERA
@@ -229,14 +229,14 @@ class CameraInputController:
         self._env.cancel()
 
     def _is_object(self, x: int, y: int) -> bool:
-        if self._sample_world_position is None:
+        if self._pick_world_position is None:
             return False
-        return self._sample_world_position(x, y) is not None
+        return self._pick_world_position(x, y) is not None
 
     def _on_double_click(self, x: int, y: int) -> None:
-        if self._sample_world_position is None:
+        if self._pick_world_position is None:
             return
-        picked_pos = self._sample_world_position(x, y)
+        picked_pos = self._pick_world_position(x, y)
         if picked_pos is not None:
             self.camera.set_pivot(picked_pos)
             self.os_mouse.center()

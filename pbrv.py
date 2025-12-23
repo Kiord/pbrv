@@ -10,6 +10,9 @@ from app.viewer import Viewer
 from core.scene import Scene, Material, Mesh, EnvMap, Panorama, CubeMap
 from core.constants import TONE_MAPPING_IDS
 
+from rendering.registry import REGISTRY
+
+
 def parse_value_or_path(
     value: Optional[str],
     default_value: Tuple[float, ...],
@@ -142,6 +145,14 @@ def main() -> None:
         help="Exposure to apply before tone mapping",
     )
 
+    parser.add_argument(
+        "--renderer", '-rend',
+        dest="renderer",
+        type=str,
+        default='deferred_gl',
+        help="Renderer to use. For now, only \"deffered_gl\" exists.",
+    )
+
     args, mw_args = parser.parse_known_args()
 
     if len(args.mesh_path) > 1:
@@ -238,6 +249,10 @@ def main() -> None:
     Viewer.use_ssao = args.use_ssao
     Viewer.tone_mapping = args.tone_mapping
     Viewer.exposure = args.exposure
+
+    if args.renderer not in REGISTRY:
+        raise ValueError(f"Available renders are \"{list(REGISTRY)}\". Found {args.renderer}")
+    Viewer.renderer_factory = REGISTRY[args.renderer]
 
     
     sys.argv = sys.argv[:1] # To trick mgl-window if mw_args is empty

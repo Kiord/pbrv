@@ -4,9 +4,9 @@ from typing import Callable, Optional, Tuple
 import moderngl
 from moderngl import Context, Program, Texture, Framebuffer, VertexArray
 
-from core.utils import RenderPass, safe_set_uniform
 from core.constants import TONE_MAPPING_IDS
 
+from rendering.deferred_gl.utils import RenderPass, safe_set_uniform
 
 @dataclass
 class BloomConfig:

@@ -8,7 +8,7 @@ from core.sun_extraction import SunExtraction
 import numpy as np
 from core.constants import EPSILON
 
-from core.utils import safe_set_uniform
+from rendering.deferred_gl.utils import safe_set_uniform
 
 @dataclass
 class PrefilterSettings:

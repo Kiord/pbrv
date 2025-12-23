@@ -2,14 +2,14 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 
 import moderngl
-from moderngl import Context, Texture, Program, VertexArray, Buffer
+from moderngl import Context, Texture, Program, VertexArray
 import numpy as np
 
-from core.constants import TexUnit
-from core.utils import RenderPass, safe_set_uniform
 from core.scene import Material
-from rendering.deferred_gl.gbuffer import GBuffer
 
+from rendering.deferred_gl.utils import RenderPass, safe_set_uniform, TexUnit
+from rendering.deferred_gl.gbuffer import GBuffer
+from rendering.deferred_gl.gl_scene import GLMesh
 
 @dataclass
 class GeometryConfig:
@@ -22,14 +22,12 @@ class GeometryPass(RenderPass):
         self,
         ctx: Context,
         load_program_fn,
-        vbo: Buffer,
-        ibo: Buffer,
+        mesh: GLMesh,
         material:Material,
         config: Optional[GeometryConfig] = None,
     ):
         super().__init__(ctx, load_program_fn)
-        self.vbo = vbo
-        self.ibo = ibo
+        self._glmesh = mesh
         self.cfg = config or GeometryConfig()
 
         self.prog: Optional[Program] = None
@@ -68,7 +66,7 @@ class GeometryPass(RenderPass):
             self.prog,
             [
                 (
-                    self.vbo,
+                    self._glmesh.vbo,
                     "3f 3f 2f 3f",
                     "in_position",
                     "in_normal",
@@ -76,7 +74,7 @@ class GeometryPass(RenderPass):
                     "in_tangent",
                 )
             ],
-            self.ibo,
+            self._glmesh.ibo,
         )
 
         self._setup_material_samplers()

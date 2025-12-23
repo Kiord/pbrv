@@ -1,32 +1,7 @@
-from typing import Any, Callable, Optional, Protocol
-from pathlib import Path
-from moderngl import Program, Context
 import numpy as np
 import os
 os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import trimesh as tm
-
-def safe_set_uniform(prog:Program, name: str, value: Any):
-    if name in prog:
-        if isinstance(value, np.ndarray):
-            prog[name].write(value.astype(np.float32).tobytes())
-        else:
-            prog[name].value = value
-        return
-    #print(f'WARNING, \"{name}\" not found') 
-
-
-
-class RenderPass(Protocol):
-    def __init__(self, ctx: Context, load_program_fn:Optional[Callable[..., Program]]=None):
-        self.ctx = ctx
-        if load_program_fn is None:
-            load_program_fn = ctx.program
-        self.load_program_fn = load_program_fn
-    def resize(self, w:int, h:int) -> None: ...
-    def reload_shaders(self) -> None: ...
-    def release(self) -> None: ...
-    def render(self) -> None: ...
 
 
 def uv_sphere(n_lat=32, n_lon=64, dtype=np.float32):
@@ -94,3 +69,4 @@ def uv_sphere(n_lat=32, n_lon=64, dtype=np.float32):
 
     faces = np.vstack([top_faces, mid_faces, bottom_faces])
     return vertices, faces, uv
+

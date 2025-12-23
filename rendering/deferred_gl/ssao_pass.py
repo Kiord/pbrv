@@ -2,9 +2,10 @@ from dataclasses import dataclass
 import moderngl
 from moderngl import Program, Texture, Framebuffer, VertexArray
 import numpy as np
-from core.constants import EPSILON, TexUnit
+from core.constants import EPSILON
 from typing import Callable, Optional
-from core.utils import safe_set_uniform, RenderPass
+
+from rendering.deferred_gl.utils import safe_set_uniform, RenderPass, TexUnit
 
 @dataclass
 class SSAOConfig:

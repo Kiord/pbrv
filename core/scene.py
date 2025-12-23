@@ -1,10 +1,8 @@
 from dataclasses import dataclass
 from typing import Tuple, Optional
-import moderngl
-from moderngl import Context
 from core.utils import uv_sphere
 from core.loading import load_image, load_image_auto, load_mesh
-from core.constants import MAX_LUMINANCE, EPSILON
+from core.constants import EPSILON
 from core.sun_extraction import SunExtractSettings, SunExtraction, extract_sun_from_cubemap, extract_sun_from_panorama
 
 import numpy as np
@@ -170,14 +168,7 @@ class Mesh:
     def from_path(cls, mesh_path: str):
         mesh = load_mesh(mesh_path)
         return cls.from_trimesh(mesh)
-      
-
-    def to_gl(self, ctx:Context):
-        data = np.hstack([self.vertices, self.normals, self.uv, self.tangents]).astype("f4")
-        vbo = ctx.buffer(data.tobytes())
-        ibo = ctx.buffer(self.faces.astype("i4").tobytes())
-        return vbo, ibo
-
+    
 @dataclass
 class Panorama:
     image: np.ndarray
@@ -187,23 +178,6 @@ class Panorama:
         image, _ = load_image_auto(image_path, out_f='f2')
         return cls(image=image)
     
-    def to_gl(self, ctx:Context):
-        h, w = self.image.shape[:2]
-        data = np.clip(self.image, 0.0, MAX_LUMINANCE)
-        pano_tex = ctx.texture(
-            (w, h),
-            components=3,
-            data=data.tobytes(),
-            dtype="f2",
-        )
-
-
-        pano_tex.build_mipmaps()
-        pano_tex.filter = (moderngl.LINEAR_MIPMAP_LINEAR, moderngl.LINEAR)
-        pano_tex.repeat_x = True
-        pano_tex.repeat_y = True
-        
-        return pano_tex
 
 @dataclass
 class CubeMap:
@@ -224,40 +198,6 @@ class CubeMap:
         bottom, _ = load_image_auto(cubemap_dir + os.sep + 'bottom', [suffix], out_f='f2')
         return cls(front=front, back=back, right=right, left=left, top=top, bottom=bottom)
     
-    def to_gl(self, ctx:Context):
-       
-        faces = [
-            self.right,
-            self.left,
-            self.top,
-            self.bottom,
-            self.front,
-            self.back,
-        ]
-
-        h, w, c = faces[0].shape
-        for f in faces[1:]:
-            if f.shape != faces[0].shape:
-                raise ValueError("All cubemap faces must have the same size")
-
-        # Pack faces in +X, -X, +Y, -Y, +Z, -Z order
-        data = np.concatenate(
-            [f.reshape(-1, c) for f in faces],
-            axis=0,
-        )
-        data = np.clip(data, 0.0, MAX_LUMINANCE)
-    
-        cube_tex = ctx.texture_cube(
-            (w, h),
-            components=c,
-            data=data.astype("f2").tobytes(),
-            dtype="f2", 
-        )
-        #cube_tex.build_mipmaps()
-        cube_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        # cube_tex.repeat_x = True
-        # cube_tex.repeat_y = True
-        return cube_tex
 
 EnvMap = Panorama | CubeMap
 

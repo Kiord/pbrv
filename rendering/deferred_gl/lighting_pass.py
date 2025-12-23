@@ -4,12 +4,12 @@ import moderngl
 from moderngl import Context, Program, VertexArray, Texture, TextureCube, Framebuffer
 import numpy as np
 
-from core.constants import TexUnit, TONE_MAPPING_IDS
-from core.utils import RenderPass, safe_set_uniform
 from core.scene import EnvMap, PointLight, DirectionalLight
 from core.sun_extraction import SunExtraction
+from rendering.deferred_gl.utils import RenderPass, safe_set_uniform, TexUnit
 from rendering.deferred_gl.ibl import EnvironmentMapPrecomputer
 from rendering.deferred_gl.gbuffer import GBuffer
+from rendering.deferred_gl.gl_scene import upload_envmap
 
 class LightingPass(RenderPass):
     def __init__(
@@ -27,7 +27,7 @@ class LightingPass(RenderPass):
         self.num_specular_mips = 0
         if envmap is not None:
             precomp = EnvironmentMapPrecomputer(self.ctx)
-            env_tex = envmap.to_gl(self.ctx)
+            env_tex = upload_envmap(self.ctx, envmap)
             (
                 self.background_tex,
                 self.irradiance_tex,
