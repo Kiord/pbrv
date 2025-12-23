@@ -255,6 +255,7 @@ class CameraInputController:
             return
 
         if button == self.wnd.mouse.right:
+            self._cancel_all_rotations()
             self._panning = True
             return
 
