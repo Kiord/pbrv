@@ -1,12 +1,21 @@
 # pbrv
 
-`pbrv` (PBR Viewer) is a lightweight CLI program to quickly visualize 3D PBR assets.
+`pbrv` (PBR Viewer) is a small CLI program to quickly visualize 3D PBR assets.
 
 [<img src="resources/misc/snapshot2.jpg">]()
 
+## Installation
+
+```
+python -m pip install -e .
+```
+
 ## Usage
 
-`python pbrv.py [--albedo VALUE_OR_PATH] [--normal PATH] [--roughness VALUE_OR_PATH] [--metallic VALUE_OR_PATH] [--ambient-occlusion PATH] [-ssao] [--envmap PATH] mesh_path `
+```
+pbrv [--albedo VALUE_OR_PATH] [--normal PATH] [--roughness VALUE_OR_PATH] [--metallic VALUE_OR_PATH] [--ambient-occlusion PATH] [-ssao] [--envmap PATH] mesh_path 
+```
+
 
 The window is a [moderngl window](https://github.com/moderngl/moderngl-window) so you can also use its arguments. For instance, set GLFW backend by adding `--window glfw`.
 
