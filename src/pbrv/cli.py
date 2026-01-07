@@ -120,12 +120,21 @@ def run() -> None:
         action='store_true',
         help="Enable SSAO",
     )
+
     parser.add_argument(
         "--envmap", '-em',
         dest="envmap_path",
         type=Path,
         metavar="PATH",
         help="Cubemap directory with right/left/top/bottom/front/back images. Or panorama image path",
+    )
+
+    parser.add_argument(
+        "-as",
+        "--autosun",
+        dest='use_autosun',
+        action='store_true',
+        help="Add to automatically find a main light direction in the provided env map.",
     )
 
     parser.add_argument(
@@ -246,6 +255,8 @@ def run() -> None:
     material.specular_tint = args.specular_tint
 
     Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap)
+    if args.use_autosun:
+        Viewer.scene.auto_sun()
     Viewer.use_ssao = args.use_ssao
     Viewer.tone_mapping = args.tone_mapping
     Viewer.exposure = args.exposure

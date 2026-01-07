@@ -199,7 +199,7 @@ class CubeMap:
         return cls(front=front, back=back, right=right, left=left, top=top, bottom=bottom)
     
 
-EnvMap = Panorama | CubeMap
+EnvMap = Panorama | CubeMap | Light
 
 
 @dataclass
@@ -217,11 +217,12 @@ class Scene:
 
         if self.envmap is None:
             self.sun = None
+            print("[Warning] Cancelling auto sun because no environment map is set.")
             return
         
         if isinstance(self.envmap, Panorama):
             sun = extract_sun_from_panorama(self.envmap.image, settings)
-        else:
+        elif isinstance(self.envmap, CubeMap):
             faces = [
                 self.envmap.right, self.envmap.left,
                 self.envmap.top, self.envmap.bottom,
