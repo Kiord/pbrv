@@ -1,8 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+.venv/
+venv/
+ENV/
+env/
+.conda/
+conda-env/
+conda-meta/
+
+# Pip / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+wheelhouse/
+*.whl
+
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+
+# Assets
+*.obj
+*.fbx
+*.gltf
+*.glb
+*.ply
+*.stl
+
+*.png
 *.jpg
 *.jpeg
-*.png
+*.webp
+*.mp4
+*.mov
 *.exr
 *.hdr
-*.obj
-.vscode
-__pycache__
+
+# misc
+tmp/
