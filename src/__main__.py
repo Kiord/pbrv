@@ -1,4 +1,4 @@
-from pbrv.cli import main
+from pbrv.main import main
 
 if __name__ == "__main__":
     main()
