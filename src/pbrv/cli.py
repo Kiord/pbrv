@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from moderngl_window import run_window_config
 
 from pbrv.app.viewer import Viewer
-from pbrv.core.scene import Scene, Material, Mesh, EnvMap, Panorama, CubeMap
+from pbrv.core.scene import Scene, Material, Mesh, Environment, Panorama, CubeMap, Light
 from pbrv.core.constants import TONE_MAPPING_IDS
 
 from pbrv.rendering.registry import REGISTRY
@@ -15,10 +15,11 @@ from pbrv.rendering.registry import REGISTRY
 
 def parse_value_or_path(
     value: Optional[str],
-    default_value: Tuple[float, ...],
+    default_value: Optional[Tuple[float, ...]],
     valid_lengths: Tuple[int, ...],
     param_name: str,
-) -> tuple[Tuple[float, ...], Optional[Path]]:
+) -> tuple[Optional[Tuple[float, ...]], Optional[Path]]:
+    
     if value is None:
         return default_value, None
 
@@ -92,7 +93,7 @@ def run() -> None:
 
     parser.add_argument(
         "--emissive",
-        "-e",
+        "-em",
         dest='emissive',
         metavar="VALUE_OR_PATH",
         help="Albedo map path OR 'r,g,b' (or single scalar)",
@@ -122,11 +123,10 @@ def run() -> None:
     )
 
     parser.add_argument(
-        "--envmap", '-em',
-        dest="envmap_path",
-        type=Path,
-        metavar="PATH",
-        help="Cubemap directory with right/left/top/bottom/front/back images. Or panorama image path",
+        "--env", "-e",
+        dest="env",
+        metavar="VALUE_OR_PATH",
+        help="Cubemap directory with right/left/top/bottom/front/back images OR panorama image path OR 'r,g,b' OR single scalar (grey)",
     )
 
     parser.add_argument(
@@ -217,20 +217,34 @@ def run() -> None:
         )
         specular_value = specular_vals[0]
 
+        env_color, env_path = parse_value_or_path(
+            args.env,
+            default_value=None,
+            valid_lengths=(1, 3),
+            param_name="--env",
+        )
+        if env_color is not None and len(env_color) == 1:
+            env_color = (env_color[0],) * 3
+        
+        envmap:Optional[Environment] = None
+        if env_path is not None:
+            if not env_path.exists():
+                parser.error(f"{env_path} does not exist")
+            is_cubemap = env_path.is_dir()
+            is_panorama = env_path.is_file()
+            if not(is_cubemap or is_panorama):
+                parser.error(f"{env_path} is neither a file nor a directory")
+            cls = CubeMap if is_cubemap else Panorama
+            envmap = cls.from_path(str(args.env))
+        elif env_color is not None:
+            envmap = Light(env_color)
+
+
     except ValueError as e:
         parser.error(str(e))
 
 
-    envmap:Optional[EnvMap] = None
-    if args.envmap_path is not None:
-        if not args.envmap_path.exists():
-            parser.error(f"{args.envmap_path} does not exist")
-        is_cubemap = args.envmap_path.is_dir()
-        is_panorama = args.envmap_path.is_file()
-        if not(is_cubemap or is_panorama):
-            parser.error(f"{args.envmap_path} is neither a file nor a directory")
-        cls = CubeMap if is_cubemap else Panorama
-        envmap = cls.from_path(str(args.envmap_path))
+   
 
     if len(args.mesh_path) > 0:
         mesh = Mesh.from_path(str(args.mesh_path[0]))

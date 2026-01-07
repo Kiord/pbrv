@@ -199,14 +199,14 @@ class CubeMap:
         return cls(front=front, back=back, right=right, left=left, top=top, bottom=bottom)
     
 
-EnvMap = Panorama | CubeMap | Light
+Environment = Panorama | CubeMap | Light
 
 
 @dataclass
 class Scene:
     mesh: Mesh
     material: Material
-    envmap: Optional[EnvMap]=None
+    envmap: Optional[Environment]=None
     point_light: Optional[PointLight]=None
     dir_light: Optional[DirectionalLight]=None
     sun: Optional[SunExtraction]=None

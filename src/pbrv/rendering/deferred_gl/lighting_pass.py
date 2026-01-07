@@ -4,7 +4,7 @@ import moderngl
 from moderngl import Context, Program, VertexArray, Texture, TextureCube, Framebuffer
 import numpy as np
 
-from pbrv.core.scene import EnvMap, PointLight, DirectionalLight
+from pbrv.core.scene import Environment, PointLight, DirectionalLight, Light
 from pbrv.core.sun_extraction import SunExtraction
 from pbrv.rendering.deferred_gl.utils import RenderPass, safe_set_uniform, TexUnit
 from pbrv.rendering.deferred_gl.ibl import EnvironmentMapPrecomputer
@@ -16,24 +16,29 @@ class LightingPass(RenderPass):
         self,
         ctx: Context,
         load_program_fn,
-        envmap:Optional[EnvMap],
+        env:Optional[Environment],
         to_exclude_sun:Optional[SunExtraction]
     ):
         super().__init__(ctx, load_program_fn)
+        self.env_color: np.ndarray = np.zeros(3, dtype="f4")
         
         self.background_tex:Optional[TextureCube] = None
         self.irradiance_tex:Optional[TextureCube] = None
         self.specular_tex:Optional[TextureCube] = None
         self.num_specular_mips = 0
-        if envmap is not None:
-            precomp = EnvironmentMapPrecomputer(self.ctx)
-            env_tex = upload_envmap(self.ctx, envmap)
-            (
-                self.background_tex,
-                self.irradiance_tex,
-                self.specular_tex,
-                self.num_specular_mips,
-            ) = precomp(env_tex, release=True, to_exclude_sun=to_exclude_sun)
+        if env is not None:
+
+            if isinstance(env, Light):
+                self.env_color = np.array(env.color).astype("f4")
+            else:
+                precomp = EnvironmentMapPrecomputer(self.ctx)
+                env_tex = upload_envmap(self.ctx, env)
+                (
+                    self.background_tex,
+                    self.irradiance_tex,
+                    self.specular_tex,
+                    self.num_specular_mips,
+                ) = precomp(env_tex, release=True, to_exclude_sun=to_exclude_sun)
 
         self.prog: Optional[Program] = None
         self.vao: Optional[VertexArray] = None
@@ -152,9 +157,9 @@ class LightingPass(RenderPass):
         if use_ssao:
             ssao_tex.use(location=TexUnit.SSAO_BLUR)
 
-        use_env = self.irradiance_tex is not None and self.specular_tex is not None
-        safe_set_uniform(self.prog, "u_use_env", use_env)
-        if use_env:
+        use_env_map = self.irradiance_tex is not None and self.specular_tex is not None
+        safe_set_uniform(self.prog, "u_use_env_map", use_env_map)
+        if use_env_map:
             self.background_tex.use(location=TexUnit.ENV_BACKGROUND)
             self.irradiance_tex.use(location=TexUnit.ENV_IRRADIANCE)
             self.specular_tex.use(location=TexUnit.ENV_SPECULAR)
@@ -163,6 +168,9 @@ class LightingPass(RenderPass):
             safe_set_uniform(self.prog, "u_envRotation", env_matrix.astype("f4"))
             safe_set_uniform(self.prog, "u_num_specular_mips", self.num_specular_mips)
             safe_set_uniform(self.prog, "u_env_lod", self.num_specular_mips * env_lod_factor)
+        
+        safe_set_uniform(self.prog, "u_env_color", self.env_color)
+        
 
         use_point_light = point_light is not None
         safe_set_uniform(self.prog, "u_use_point_light", use_point_light)

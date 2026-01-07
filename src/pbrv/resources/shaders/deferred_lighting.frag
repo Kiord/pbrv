@@ -11,7 +11,9 @@ uniform sampler2D gRMAOS;
 uniform sampler2D gEmissive;
 uniform sampler2D u_ssao;
 
-uniform bool u_use_env;
+uniform vec3 u_env_color;
+
+uniform bool u_use_env_map;
 uniform samplerCube u_background_env;
 uniform samplerCube u_irradiance_env;
 uniform samplerCube u_specular_env;
@@ -40,7 +42,6 @@ uniform vec3 u_pointLightColor;
 uniform bool  u_use_dir_light;
 uniform vec3  u_dirLightDir;
 uniform vec3  u_dirLightColor;
-
 
 
 uniform sampler2DShadow u_shadowMap;
@@ -228,9 +229,6 @@ vec3 evaluateIBLBRDF(
     float ao,
     vec3 F0
 ){
-    if (!u_use_env) {
-        return vec3(0.0);
-    }
 
     float NdotV = max(dot(N, V), 0.0);
 
@@ -238,15 +236,17 @@ vec3 evaluateIBLBRDF(
 
     vec3 diffuseBRDF_ibl = evalDiffuseBRDF(albedo, metallic, F_ibl);
 
-    vec3 irradiance = texture(u_irradiance_env, envSamplingDirection(N)).rgb;
-    vec3 diffuseIBL = diffuseBRDF_ibl * irradiance;
+    vec3 irradiance_env = u_env_color;
+    vec3 specular_env = u_env_color;
+    if (u_use_env_map){
+        irradiance_env = texture(u_irradiance_env, envSamplingDirection(N)).rgb;
+        float lod = roughness * float(u_num_specular_mips - 1);
+        vec3 R = reflect(-V, N);
+        specular_env = textureLod(u_specular_env, envSamplingDirection(R), lod).rgb;
+    }
 
-    vec3 R = reflect(-V, N);
-
-    float lod = roughness * float(u_num_specular_mips - 1);
-    vec3 prefilteredColor = textureLod(u_specular_env, envSamplingDirection(R), lod).rgb;
-
-    vec3 specIBL = prefilteredColor * F_ibl;
+    vec3 diffuseIBL = diffuseBRDF_ibl * irradiance_env;
+    vec3 specIBL = specular_env * F_ibl;
 
     float specWeight = roughness * roughness;
     float specAO = mix(1.0, ao, specWeight);
@@ -260,7 +260,7 @@ void main()
     vec4 worldPos4 = texture(gPosition, v_uv).rgba;
 
     if (worldPos4.a < 0.5) {
-        if (u_use_env){
+        if (u_use_env_map){
             vec3 bg = vec3(0.0);
             vec3 viewDir = get_world_dir_from_uv(v_uv);
             viewDir = envSamplingDirection(viewDir);
@@ -274,7 +274,7 @@ void main()
             fragColor = vec4(bg, 1.0);
             return;
         }
-        fragColor = vec4(0, 0, 0, 1);
+        fragColor = vec4(u_env_color, 1);
         return;
     }
     vec3 worldPos = worldPos4.xyz;

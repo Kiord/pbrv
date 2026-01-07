@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import moderngl
 from moderngl import Buffer, Context, TextureCube, Texture
 import numpy as np
-from pbrv.core.scene import Mesh, CubeMap, Panorama, EnvMap
+from pbrv.core.scene import Mesh, CubeMap, Panorama, Environment
 from pbrv.core.constants import MAX_LUMINANCE
 
 @dataclass
@@ -66,7 +66,7 @@ def upload_panorama(ctx:Context, panorama:Panorama)->Texture:
     return pano_tex
 
 
-def upload_envmap(ctx:Context, envmap:EnvMap)->Union[Texture, TextureCube]:
+def upload_envmap(ctx:Context, envmap:Environment)->Union[Texture, TextureCube]:
     if isinstance(envmap, Panorama):
         return upload_panorama(ctx, envmap)
     if isinstance(envmap, CubeMap):
