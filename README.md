@@ -1,8 +1,16 @@
 # pbrv
 
-`pbrv` (PBR Viewer) is a small CLI program to quickly visualize 3D PBR assets.
+`pbrv` (PBR Viewer) is a small Python PBR viewer in CLI.
 
 [<img src="src/pbrv/resources/misc/snapshot.jpg">]()
+
+## Quick run
+
+```
+python -m pip install dependencies.txt
+python -m pbrv.main ...
+```
+
 
 ## Installation
 
@@ -13,7 +21,7 @@ python -m pip install -e .
 ## Usage
 
 ```
-pbrv [--albedo VALUE_OR_PATH] [--normal PATH] [--roughness VALUE_OR_PATH] [--metallic VALUE_OR_PATH] [--ambient-occlusion PATH] [-ssao] [--envmap PATH] mesh_path 
+pbrv [mesh_path ...] [--albedo VALUE_OR_PATH] [--normal PATH] [--roughness VALUE_OR_PATH] [--metallic VALUE_OR_PATH] [--ambient-occlusion PATH] [--emissive VALUE_OR_PATH] [--specular VALUE_OR_PATH] [--specular-tint SPECULAR_TINT] [-ssao] [--env VALUE_OR_PATH] [--directional-light-radiance VALUE] [--directional-light-direction VALUE] [--point-light-radiance VALUE] [--point-light-position VALUE] [-auto-sun] [--bloom] [--tone-mapping {simple,aces,reinhard,uncharted2,none}] [--exposure EXPOSURE] [--renderer RENDERER]
 ```
 
 
@@ -22,10 +30,14 @@ The window is a [moderngl window](https://github.com/moderngl/moderngl-window) s
 ## Features/Specs
 - Interactive window
     - Trackball camera (with path indepedance)
-    - Left click to rotate
-    - Right click to pan
-    - Double click to focus
-- Deffered Shading
+    - Lclick: rotate
+    - Rclick: pan
+    - Dblclick: focus
+    - Ctrl+Lclick: rotate object
+    - Shift+Lclick: rotate environment
+    - Alt+Lclick: rotate directional light
+- Deferred Shading
+
 - Metal/roughness workflow
 - Normal mapping (tangent space)
 - SSAO (if no AO map)
@@ -35,6 +47,12 @@ The window is a [moderngl window](https://github.com/moderngl/moderngl-window) s
     - Cubemap prefiltering
         - Irradiance (Cosine)
         - Specular (GGX)
+- 1 Directional light
+- 1 Point light
+- Procedural Environment
+    - Sun (sunrise/dusk)
+    - Based on directional light direction
+    - Stars at night
 
 ## Dependencies
 - moderngl
@@ -43,3 +61,9 @@ The window is a [moderngl window](https://github.com/moderngl/moderngl-window) s
 - numpy
 - pyrr
 - opencv-python
+
+## Examples
+[<img src="src/pbrv/resources/misc/screenshot1.jpg">]()
+[<img src="src/pbrv/resources/misc/screenshot2.jpg">]()
+[<img src="src/pbrv/resources/misc/screenshot3.jpg">]()
+[<img src="src/pbrv/resources/misc/screenshot4.jpg">]()
