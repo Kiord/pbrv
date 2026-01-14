@@ -158,7 +158,7 @@ def run() -> None:
         "--directional_light_radiance",
         dest="directional_light_radiance",
         metavar="VALUE",
-        default="0,0,0",
+        default=None,
         help="Radiance of the directional light (float3 or scalar)"
     )
 
@@ -176,7 +176,7 @@ def run() -> None:
         "--point-light-radiance",
         dest="point_light_radiance",
         metavar="VALUE",
-        default="0,0,0",
+        default=None,
         help="Radiance of the point light (float3 or scalar)"
     )
 
@@ -302,7 +302,6 @@ def run() -> None:
 
         directional_light_radiance = parse_value(
             args.directional_light_radiance,
-            default_value=(0,0,0),
             valid_lengths=(1, 3),
             param_name="--directional-light-radiance",
         )
