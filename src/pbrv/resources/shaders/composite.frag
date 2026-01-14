@@ -3,8 +3,8 @@
 in vec2 v_uv;
 out vec4 fragColor;
 
-uniform sampler2D u_hdr;    // linear HDR
-uniform sampler2D u_bloom;  // blurred bloom (linear)
+uniform sampler2D u_hdr;    
+uniform sampler2D u_bloom;  
 
 uniform float u_bloom_intensity; // e.g. 0.05 .. 0.5
 
@@ -21,7 +21,7 @@ vec3 linear_to_srgb(vec3 x) {
 
 vec3 tonemap_exposure(vec3 hdr, float exposure) {
     vec3 ldr = hdr * exposure;
-    return ldr;  // still linear, do gamma after
+    return ldr;
 }
 
 // Or with gamma baked in:
@@ -50,12 +50,12 @@ vec3 uncharted2_tonemap(vec3 x) {
 }
 
 vec3 tonemap_uncharted2(vec3 hdr, float exposure) {
-    const float W = 11.2; // white point used in Hable’s paper
+    const float W = 11.2; 
 
     vec3 x = hdr * exposure;
     vec3 curr = uncharted2_tonemap(x);
     vec3 whiteScale = 1.0 / uncharted2_tonemap(vec3(W));
-    return curr * whiteScale; // linear
+    return curr * whiteScale; 
 }
 
 vec3 tonemap_uncharted2_srgb(vec3 hdr, float exposure) {
@@ -72,7 +72,7 @@ vec3 tonemap_aces(vec3 hdr, float exposure) {
     const float e = 0.14;
 
     vec3 mapped = (x*(a*x + b)) / (x*(c*x + d) + e);
-    return clamp(mapped, 0.0, 1.0); // linear
+    return clamp(mapped, 0.0, 1.0);
 }
 
 vec3 tonemap_aces_srgb(vec3 hdr, float exposure) {

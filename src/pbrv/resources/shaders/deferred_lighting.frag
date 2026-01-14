@@ -29,8 +29,6 @@ uniform int u_num_specular_mips;
 uniform bool u_use_procedural_environment=false;
 uniform bool u_use_procedural_sun=false;
 
-// uniform int u_tone_mapping_id;
-// uniform float u_exposure;
 
 uniform bool u_use_ssao;
 
@@ -55,9 +53,6 @@ uniform vec3  u_dirLightColor;
 
 uniform sampler2DShadow u_shadowMap;
 uniform mat4  u_lightViewProj;
-uniform float u_shadow_bias;      // small bias to fight acne
-uniform float u_shadow_strength;  // 0..1
-
 
 // const float GAMMA = 2.2;
 const vec3 LUMINANCE_PERCEPTION = vec3(0.2126, 0.7152, 0.0722);
@@ -156,7 +151,7 @@ float shadowVisibility(vec3 worldPos, vec3 N, vec3 L)
     vec4 lightClip = u_lightViewProj * vec4(worldPos, 1.0);
     vec3 projCoords = (lightClip.xyz / lightClip.w) * 0.5 + 0.5;
 
-    // Outside the shadow map -> treat as lit
+    // Outside the shadow map
     if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
         projCoords.y < 0.0 || projCoords.y > 1.0 ||
         projCoords.z < 0.0 || projCoords.z > 1.0)
@@ -201,7 +196,6 @@ vec3 evaluatePunctualLightingBRDF(
     vec3 specularBRDF = evalSpecularBRDF(N, V, L, roughness, F0, F);
     vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F);
 
-    // Lo_direct
     return (diffuseBRDF + specularBRDF) * effective_radiance * NdotL;
 }
 
@@ -216,7 +210,6 @@ vec3 evaluateDirectionalLightingBRDF(
     float metallic,
     vec3 F0
 ){
-    // u_dirLightDir points FROM light TO scene, so surface->light is -dir
     vec3 L = normalize(-direction);
     float NdotL = max(dot(N, L), 0.0);
     if (NdotL <= 0.0) {
@@ -317,10 +310,8 @@ void main()
     float ao        = clamp(rmaos.b, 0.0, 1.0);
 
 
-    // V is surface -> camera
     vec3 V = -viewDir;
 
-    // -------- Direct lighting (BRDF) --------
     if (u_use_ssao) {
         ao = texture(u_ssao, v_uv).r;
     }
@@ -331,6 +322,7 @@ void main()
     vec3 dielectricF0 =  0.08 * specular * mix(vec3(1.0), Ctint, u_specularTint);
     vec3 F0 = mix(dielectricF0, albedo, metallic);
 
+    // Punctual lighting
     vec3 Lo_direct = vec3(0.0);
     if (u_use_point_light && dot(u_pointLightColor, u_pointLightColor) > 0.0) {
         Lo_direct += evaluatePunctualLightingBRDF(
@@ -340,7 +332,8 @@ void main()
             albedo, roughness, metallic, F0
         );
     }
-    // Directional light + shadow (optional)
+    
+    // Directional light + shadow
     vec3 dirLightColor = u_dirLightColor;
     if (u_use_procedural_sun){
         dirLightColor = procedural_sun_radiance(-u_dirLightDir);
@@ -354,7 +347,7 @@ void main()
         );
     }
 
-    // -------- IBL (BRDF-based) --------
+    // IBL
     
     vec3 Lo_ibl = evaluateIBLBRDF(
         N, V,

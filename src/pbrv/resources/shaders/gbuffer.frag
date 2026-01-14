@@ -64,14 +64,14 @@ void main() {
     gPosition = vec4(fs_in.worldPos, 1.0);
     gNormal   = vec4(N, 1.0);
 
-    // --- Albedo ---
+    //  Albedo 
     vec3 albedo = u_albedo;
     if (u_use_albedo_map) {
-        albedo = texture(u_albedo_map, fs_in.uv).rgb;  // map overwrites uniform
+        albedo = texture(u_albedo_map, fs_in.uv).rgb;
     }
     gAlbedo = vec4(albedo, 1.0);
 
-    // --- Roughness / metallic / AO packed into gRMAOS ---
+    // Roughness / metallic / AO / specular
     float roughness   = u_roughness;
     float metallic = u_metallic;
     vec3 emissive = u_emissive;
