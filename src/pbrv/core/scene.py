@@ -215,10 +215,12 @@ class Scene:
         if self.dir_light is not None:
             print("[Warning] Calling auto sun will overwrite the existing directional light.")
 
-        if self.envmap is None:
+        if isinstance(self.envmap, Light):
             self.sun = None
-            print("[Warning] Cancelling auto sun because no environment map is set.")
+            print("[Warning] Cancelling auto sun because environment is uniform.")
             return
+        
+
         
         if isinstance(self.envmap, Panorama):
             sun = extract_sun_from_panorama(self.envmap.image, settings)
@@ -229,6 +231,9 @@ class Scene:
                 self.envmap.front, self.envmap.back,
             ]  #  +X,-X,+Y,-Y,+Z,-Z
             sun = extract_sun_from_cubemap(faces, settings)
+        else:
+            self.dir_light = DirectionalLight((0, 0, 0), (0,-1, 0))
+            return
 
         self.sun = sun
         if sun is None:

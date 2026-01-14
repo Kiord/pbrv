@@ -1,5 +1,11 @@
 #version 330 core
 
+#include shaders/procedural_environment.glsl 
+
+#ifndef PI
+#define PI 3.1415926535897932384626433832795
+#endif
+
 in vec2 v_uv;
 
 out vec4 fragColor;
@@ -19,6 +25,9 @@ uniform samplerCube u_irradiance_env;
 uniform samplerCube u_specular_env;
 uniform float u_env_lod;
 uniform int u_num_specular_mips;
+
+uniform bool u_use_procedural_environment=false;
+uniform bool u_use_procedural_sun=false;
 
 // uniform int u_tone_mapping_id;
 // uniform float u_exposure;
@@ -40,7 +49,7 @@ uniform vec3 u_pointLightPos;
 uniform vec3 u_pointLightColor;
 
 uniform bool  u_use_dir_light;
-uniform vec3  u_dirLightDir;
+uniform vec3  u_dirLightDir =vec3(0,-1,0);
 uniform vec3  u_dirLightColor;
 
 
@@ -53,8 +62,11 @@ uniform float u_shadow_strength;  // 0..1
 // const float GAMMA = 2.2;
 const vec3 LUMINANCE_PERCEPTION = vec3(0.2126, 0.7152, 0.0722);
 
+vec3 procedural_sun_radiance(vec3 rd);
+vec3 procedural_environment(vec3 ro, vec3 rd);
+vec3 procedural_environment_ggx(vec3 ro, vec3 rd, float roughness);
+vec3 procedural_environment_lambert(vec3 ro, vec3 rd);
 
-const float PI = 3.14159265359;
   
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
@@ -164,7 +176,9 @@ float shadowVisibility(vec3 worldPos, vec3 N, vec3 L)
     return sum / 9.0;
 }
 
-vec3 evaluateDirectLightingBRDF(
+vec3 evaluatePunctualLightingBRDF(
+    vec3 radiance,
+    vec3 position,
     vec3 worldPos,
     vec3 N,
     vec3 V,
@@ -173,11 +187,11 @@ vec3 evaluateDirectLightingBRDF(
     float metallic,
     vec3 F0
 ){
-    vec3 L = normalize(u_pointLightPos - worldPos);
+    vec3 L = normalize(position - worldPos);
 
-    float distance    = length(u_pointLightPos - worldPos);
+    float distance    = length(position - worldPos);
     float attenuation = 1.0 / (distance * distance);
-    vec3 radiance     = u_pointLightColor * attenuation;
+    vec3 effective_radiance   = radiance * attenuation;
 
     
 
@@ -188,10 +202,12 @@ vec3 evaluateDirectLightingBRDF(
     vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F);
 
     // Lo_direct
-    return (diffuseBRDF + specularBRDF) * radiance * NdotL;
+    return (diffuseBRDF + specularBRDF) * effective_radiance * NdotL;
 }
 
 vec3 evaluateDirectionalLightingBRDF(
+    vec3 radiance,
+    vec3 direction,
     vec3 worldPos,
     vec3 N,
     vec3 V,
@@ -201,13 +217,12 @@ vec3 evaluateDirectionalLightingBRDF(
     vec3 F0
 ){
     // u_dirLightDir points FROM light TO scene, so surface->light is -dir
-    vec3 L = normalize(-u_dirLightDir);
+    vec3 L = normalize(-direction);
     float NdotL = max(dot(N, L), 0.0);
     if (NdotL <= 0.0) {
         return vec3(0.0);
     }
 
-    vec3 radiance = u_dirLightColor;
     vec3 F;
     vec3 specularBRDF = evalSpecularBRDF(N, V, L, roughness, F0, F);
     vec3 diffuseBRDF  = evalDiffuseBRDF(albedo, metallic, F);
@@ -243,6 +258,11 @@ vec3 evaluateIBLBRDF(
         float lod = roughness * float(u_num_specular_mips - 1);
         vec3 R = reflect(-V, N);
         specular_env = textureLod(u_specular_env, envSamplingDirection(R), lod).rgb;
+    }else if (u_use_procedural_environment){
+        vec3 sunDir = envSamplingDirection(normalize(-u_dirLightDir));
+        irradiance_env = procedural_environment_lambert(envSamplingDirection(N), sunDir);
+        vec3 R = reflect(-V, N);
+        specular_env = procedural_environment_ggx(envSamplingDirection(R), sunDir, roughness).rgb;
     }
 
     vec3 diffuseIBL = diffuseBRDF_ibl * irradiance_env;
@@ -254,29 +274,36 @@ vec3 evaluateIBLBRDF(
     return ao * diffuseIBL + specAO * specIBL;
 }
 
+vec3 get_background_color(){
+    if (u_use_env_map){
+        vec3 bg = vec3(0.0);
+        vec3 viewDir = get_world_dir_from_uv(v_uv);
+        viewDir = envSamplingDirection(viewDir);
+        if (u_env_lod == 0.0)
+            return texture(u_background_env, viewDir).rgb;
+        else if (u_env_lod == u_num_specular_mips)
+            return  texture(u_irradiance_env, viewDir).rgb / PI;
+        else
+           return textureLod(u_specular_env, viewDir, u_env_lod).rgb;
+        return bg;
+    }else if (u_use_procedural_environment){
+        vec3 viewDir = envSamplingDirection(get_world_dir_from_uv(v_uv));
+        vec3 sunDir = envSamplingDirection(normalize(-u_dirLightDir));
+        return procedural_environment(viewDir, sunDir);
+    }
+    return u_env_color;
+}
+
 
 void main()
 {
     vec4 worldPos4 = texture(gPosition, v_uv).rgba;
 
     if (worldPos4.a < 0.5) {
-        if (u_use_env_map){
-            vec3 bg = vec3(0.0);
-            vec3 viewDir = get_world_dir_from_uv(v_uv);
-            viewDir = envSamplingDirection(viewDir);
-            if (u_env_lod == 0.0)
-                bg  = texture(u_background_env, viewDir).rgb;
-            else if (u_env_lod == u_num_specular_mips)
-                bg =  texture(u_irradiance_env, viewDir).rgb / PI;
-            else
-                bg = textureLod(u_specular_env, viewDir, u_env_lod).rgb;
-            //bg = tonemap(bg);
-            fragColor = vec4(bg, 1.0);
-            return;
-        }
-        fragColor = vec4(u_env_color, 1);
+        fragColor = vec4(get_background_color(), 1);
         return;
     }
+
     vec3 worldPos = worldPos4.xyz;
 
     vec3 viewDir = normalize(worldPos - u_viewPos);
@@ -306,20 +333,29 @@ void main()
 
     vec3 Lo_direct = vec3(0.0);
     if (u_use_point_light && dot(u_pointLightColor, u_pointLightColor) > 0.0) {
-        Lo_direct += evaluateDirectLightingBRDF(
+        Lo_direct += evaluatePunctualLightingBRDF(
+            u_pointLightColor,
+            u_pointLightPos,
             worldPos, N, V,
             albedo, roughness, metallic, F0
         );
     }
     // Directional light + shadow (optional)
-    if (u_use_dir_light && dot(u_dirLightColor, u_dirLightColor) > 0.0) {
+    vec3 dirLightColor = u_dirLightColor;
+    if (u_use_procedural_sun){
+        dirLightColor = procedural_sun_radiance(-u_dirLightDir);
+    }
+    if (u_use_dir_light && dot(dirLightColor, dirLightColor) > 0.0) {
         Lo_direct += evaluateDirectionalLightingBRDF(
+            dirLightColor,
+            u_dirLightDir,
             worldPos, N, V,
             albedo, roughness, metallic, F0
         );
     }
 
     // -------- IBL (BRDF-based) --------
+    
     vec3 Lo_ibl = evaluateIBLBRDF(
         N, V,
         albedo, roughness, metallic, ao, F0

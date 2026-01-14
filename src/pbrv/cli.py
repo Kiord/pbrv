@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from moderngl_window import run_window_config
 
 from pbrv.app.viewer import Viewer
-from pbrv.core.scene import Scene, Material, Mesh, Environment, Panorama, CubeMap, Light
+from pbrv.core.scene import Scene, Material, Mesh, Environment, Panorama, CubeMap, Light, PointLight, DirectionalLight
 from pbrv.core.constants import TONE_MAPPING_IDS
 
 from pbrv.rendering.registry import REGISTRY
@@ -40,6 +40,30 @@ def parse_value_or_path(
         )
 
     return floats, None
+
+def parse_value(
+    value: Optional[str],
+    valid_lengths: Tuple[int, ...],
+    param_name: str,
+    default_value: Optional[Tuple[float, ...]]=None):
+    
+    if value is None:
+        return default_value
+    
+    parts = value.replace(",", " ").split()
+    try:
+        floats = tuple(float(part) for part in parts)
+    except ValueError:
+        raise ValueError(f"{param_name}: '{value}' is not a valid numeric value.")
+
+    if len(floats) not in valid_lengths:
+        raise ValueError(
+            f"{param_name}: '{value}' has length {len(floats)}, "
+            f"expected one of {valid_lengths}."
+        )
+
+    return floats
+    
 
 
 
@@ -93,7 +117,7 @@ def run() -> None:
 
     parser.add_argument(
         "--emissive",
-        "-em",
+        "-e",
         dest='emissive',
         metavar="VALUE_OR_PATH",
         help="Albedo map path OR 'r,g,b' (or single scalar)",
@@ -123,11 +147,48 @@ def run() -> None:
     )
 
     parser.add_argument(
-        "--env", "-e",
+        "--env",
         dest="env",
         metavar="VALUE_OR_PATH",
         help="Cubemap directory with right/left/top/bottom/front/back images OR panorama image path OR 'r,g,b' OR single scalar (grey)",
     )
+
+    parser.add_argument(
+        "-dlr",
+        "--directional_light_radiance",
+        dest="directional_light_radiance",
+        metavar="VALUE",
+        default="0,0,0",
+        help="Radiance of the directional light (float3 or scalar)"
+    )
+
+    parser.add_argument(
+        "-dld",
+        "--directional-light-direction",
+        dest="directional_light_direction",
+        metavar="VALUE",
+        default="0,-1,0",
+        help="Direction of the directional light (float32)"
+    )
+
+    parser.add_argument(
+        "-plr",
+        "--point-light-radiance",
+        dest="point_light_radiance",
+        metavar="VALUE",
+        default="0,0,0",
+        help="Radiance of the point light (float3 or scalar)"
+    )
+
+    parser.add_argument(
+        "-plp",
+        "--point-light-position",
+        dest="point_light_position",
+        metavar="VALUE",
+        default="1,1,1",
+        help="Position of the point light (float3)"
+    )
+
 
     parser.add_argument(
         "-as",
@@ -239,6 +300,33 @@ def run() -> None:
         elif env_color is not None:
             envmap = Light(env_color)
 
+        directional_light_radiance = parse_value(
+            args.directional_light_radiance,
+            default_value=(0,0,0),
+            valid_lengths=(1, 3),
+            param_name="--directional-light-radiance",
+        )
+        if directional_light_radiance is not None and len(directional_light_radiance) == 1:
+            directional_light_radiance = (directional_light_radiance[0],) * 3
+        directional_light_direction = parse_value(
+            args.directional_light_direction,
+            valid_lengths=(3,),
+            param_name="--directional-light-direction",
+        )
+
+        point_light_radiance = parse_value(
+            args.point_light_radiance,
+            valid_lengths=(1, 3),
+            param_name="--point-light-radiance",
+        )
+        if point_light_radiance is not None and len(point_light_radiance) == 1:
+            point_light_radiance = (point_light_radiance[0],) * 3
+        point_light_position = parse_value(
+            args.point_light_position,
+            valid_lengths=(3,),
+            param_name="--point-light-position",
+        )
+   
 
     except ValueError as e:
         parser.error(str(e))
@@ -268,7 +356,14 @@ def run() -> None:
     material.specular = specular_value
     material.specular_tint = args.specular_tint
 
-    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap)
+    point_light:Optional[PointLight] = None
+    if point_light_radiance is not None:
+        point_light = PointLight(point_light_radiance, point_light_position)
+    dir_light:Optional[PointLight] = None
+    if directional_light_radiance is not None:
+        dir_light = DirectionalLight(directional_light_radiance, directional_light_direction)
+
+    Viewer.scene = Scene(mesh=mesh, material=material, envmap=envmap, point_light=point_light, dir_light=dir_light)
     if args.use_autosun:
         Viewer.scene.auto_sun()
     Viewer.use_ssao = args.use_ssao

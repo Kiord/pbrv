@@ -98,7 +98,7 @@ if __name__ == "__main__":
     from pbrv.core.scene import Mesh, Material, Panorama, CubeMap
     from pbrv.core.sun_extraction import SunExtractSettings
     from pbrv.rendering.registry import REGISTRY
-    
+
     asset_name = "helmet"
     mesh = Mesh.from_path(f"resources/meshes/{asset_name}.obj")
     material = Material.from_map_paths(

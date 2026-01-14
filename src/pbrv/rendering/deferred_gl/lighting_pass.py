@@ -20,7 +20,7 @@ class LightingPass(RenderPass):
         to_exclude_sun:Optional[SunExtraction]
     ):
         super().__init__(ctx, load_program_fn)
-        self.env_color: np.ndarray = np.zeros(3, dtype="f4")
+        self.env_color: Optional[np.ndarray] = None
         
         self.background_tex:Optional[TextureCube] = None
         self.irradiance_tex:Optional[TextureCube] = None
@@ -76,15 +76,22 @@ class LightingPass(RenderPass):
         self.num_specular_mips = 0
 
     def reload_shaders(self) -> None:
+        try:
+            prog = self.load_program_fn(
+                vertex_shader="shaders/screen.vert",
+                fragment_shader="shaders/deferred_lighting.frag",
+            )
+        except moderngl.Error as e:
+            print(f'[Deferred GL / Lighting Pass] {e}')
+            return
+
         if self.prog is not None:
             self.prog.release()
         if self.vao is not None:
             self.vao.release()
-
-        self.prog = self.load_program_fn(
-            vertex_shader="shaders/screen.vert",
-            fragment_shader="shaders/deferred_lighting.frag",
-        )
+        
+        self.prog = prog
+        
         self.vao = self.ctx.vertex_array(self.prog, [])
 
         safe_set_uniform(self.prog, "gPosition", TexUnit.GBUFFER_POSITION)
@@ -159,18 +166,21 @@ class LightingPass(RenderPass):
 
         use_env_map = self.irradiance_tex is not None and self.specular_tex is not None
         safe_set_uniform(self.prog, "u_use_env_map", use_env_map)
+        safe_set_uniform(self.prog, "u_invView", inv_view.astype("f4"))
+        safe_set_uniform(self.prog, "u_invProj", inv_proj.astype("f4"))
+        safe_set_uniform(self.prog, "u_envRotation", env_matrix.astype("f4"))
         if use_env_map:
             self.background_tex.use(location=TexUnit.ENV_BACKGROUND)
             self.irradiance_tex.use(location=TexUnit.ENV_IRRADIANCE)
             self.specular_tex.use(location=TexUnit.ENV_SPECULAR)
-            safe_set_uniform(self.prog, "u_invView", inv_view.astype("f4"))
-            safe_set_uniform(self.prog, "u_invProj", inv_proj.astype("f4"))
-            safe_set_uniform(self.prog, "u_envRotation", env_matrix.astype("f4"))
             safe_set_uniform(self.prog, "u_num_specular_mips", self.num_specular_mips)
             safe_set_uniform(self.prog, "u_env_lod", self.num_specular_mips * env_lod_factor)
-        
-        safe_set_uniform(self.prog, "u_env_color", self.env_color)
-        
+        elif self.env_color is not None:
+            safe_set_uniform(self.prog, "u_env_color", self.env_color)
+        else:
+            safe_set_uniform(self.prog, "u_use_procedural_environment", True)
+            safe_set_uniform(self.prog, "u_use_procedural_sun", dir_light is not None)
+
 
         use_point_light = point_light is not None
         safe_set_uniform(self.prog, "u_use_point_light", use_point_light)
