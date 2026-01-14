@@ -1,0 +1,6 @@
+moderngl
+moderngl-window
+trimesh
+numpy
+pyrr
+opencv-python
