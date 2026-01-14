@@ -7,7 +7,7 @@
 ## Quick run
 
 ```
-python -m pip install dependencies.txt
+python -m pip install requirements.txt
 python -m pbrv.main ...
 ```
 
