@@ -199,6 +199,14 @@ def run() -> None:
     )
 
     parser.add_argument(
+        "-b",
+        "--bloom",
+        dest='use_bloom',
+        action='store_true',
+        help="Enable bloom.",
+    )
+
+    parser.add_argument(
         "--tone-mapping", '--tonemap', '-t', '-tm',
         dest="tone_mapping",
         type=str,
@@ -325,7 +333,6 @@ def run() -> None:
             valid_lengths=(3,),
             param_name="--point-light-position",
         )
-   
 
     except ValueError as e:
         parser.error(str(e))
@@ -366,6 +373,7 @@ def run() -> None:
     if args.use_autosun:
         Viewer.scene.auto_sun()
     Viewer.use_ssao = args.use_ssao
+    Viewer.use_bloom = args.use_bloom
     Viewer.tone_mapping = args.tone_mapping
     Viewer.exposure = args.exposure
 

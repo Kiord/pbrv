@@ -181,6 +181,7 @@ class DeferredGLRenderer(Renderer):
             frame.tone_mapping,
             frame.exposure,
             frame.time,
+            frame.use_bloom,
             frame.window_size,
         )
 

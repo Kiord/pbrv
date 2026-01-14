@@ -26,5 +26,6 @@ class FrameState:
     tone_mapping: str
     env_lod_factor: Optional[float]
     use_ssao:Optional[bool]
+    use_bloom:Optional[bool]
     window_size:Tuple[int, int]
 

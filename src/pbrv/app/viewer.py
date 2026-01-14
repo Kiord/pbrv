@@ -19,6 +19,7 @@ class Viewer(WindowConfig):
 
     scene: Scene = None
     use_ssao: bool = False
+    use_bloom: bool = False
     tone_mapping: str = "aces"
     exposure: float = 1.0
 
@@ -87,6 +88,7 @@ class Viewer(WindowConfig):
             tone_mapping=str(self.tone_mapping),
             env_lod_factor=float(self.input.lod_factor) if self.input.lod_factor is not None else None,
             use_ssao=bool(self.use_ssao),
+            use_bloom=bool(self.use_bloom),
             window_size=self.wnd.size,
         )
         self.renderer.render(frame)

@@ -156,6 +156,7 @@ class PostProcessingPass(RenderPass):
         tone_mapping: str,
         exposure: float,
         time_value:float,
+        do_bloom:bool,
         window_size: Tuple[int, int],
         *,
         emissive_boost: Optional[float] = None,
@@ -171,51 +172,52 @@ class PostProcessingPass(RenderPass):
         inten = self.cfg.intensity if intensity is None else float(intensity)
         exp = self.cfg.exposure if exposure is None else float(exposure)
 
-        bw, bh = self._bloom_size
+        if do_bloom:
+            bw, bh = self._bloom_size
 
-        # Common state
-        self.ctx.disable(moderngl.DEPTH_TEST)
-        self.ctx.disable(moderngl.CULL_FACE)
-        self.ctx.disable(moderngl.BLEND)
+            # Common state
+            self.ctx.disable(moderngl.DEPTH_TEST)
+            self.ctx.disable(moderngl.CULL_FACE)
+            self.ctx.disable(moderngl.BLEND)
 
-        #  Prefilter to seed tex (half-res)
-        self.seed_fbo.use()
-        self.ctx.viewport = (0, 0, bw, bh)
-        self.ctx.clear(0.0, 0.0, 0.0, 1.0)
-
-        input_tex.use(location=0)
-        emissive_tex.use(location=1)
-
-        safe_set_uniform(self.prefilter_prog, "u_emissive_boost", ebo)
-        safe_set_uniform(self.prefilter_prog, "u_hdr_boost", hbo)
-
-        self.prefilter_vao.render(mode=moderngl.TRIANGLES, vertices=3)
-
-        # Blur ping pong
-        src_tex = self.seed_tex
-        texel_size = (1.0 / float(bw), 1.0 / float(bh))
-        safe_set_uniform(self.blur_prog, "u_texel_size", texel_size)
-
-        for _ in range(max(1, iters)):
-            # Horizontal
-            self.pingpong_fbo[0].use()
+            #  Prefilter to seed tex (half-res)
+            self.seed_fbo.use()
             self.ctx.viewport = (0, 0, bw, bh)
             self.ctx.clear(0.0, 0.0, 0.0, 1.0)
 
-            src_tex.use(location=0)
-            safe_set_uniform(self.blur_prog, "u_direction", (1.0, 0.0))
-            self.blur_vao.render(mode=moderngl.TRIANGLES, vertices=3)
+            input_tex.use(location=0)
+            emissive_tex.use(location=1)
 
-            # Vertical
-            self.pingpong_fbo[1].use()
-            self.ctx.viewport = (0, 0, bw, bh)
-            self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+            safe_set_uniform(self.prefilter_prog, "u_emissive_boost", ebo)
+            safe_set_uniform(self.prefilter_prog, "u_hdr_boost", hbo)
 
-            self.pingpong_tex[0].use(location=0)
-            safe_set_uniform(self.blur_prog, "u_direction", (0.0, 1.0))
-            self.blur_vao.render(mode=moderngl.TRIANGLES, vertices=3)
+            self.prefilter_vao.render(mode=moderngl.TRIANGLES, vertices=3)
 
-            src_tex = self.pingpong_tex[1]
+            # Blur ping pong
+            src_tex = self.seed_tex
+            texel_size = (1.0 / float(bw), 1.0 / float(bh))
+            safe_set_uniform(self.blur_prog, "u_texel_size", texel_size)
+
+            for _ in range(max(1, iters)):
+                # Horizontal
+                self.pingpong_fbo[0].use()
+                self.ctx.viewport = (0, 0, bw, bh)
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+
+                src_tex.use(location=0)
+                safe_set_uniform(self.blur_prog, "u_direction", (1.0, 0.0))
+                self.blur_vao.render(mode=moderngl.TRIANGLES, vertices=3)
+
+                # Vertical
+                self.pingpong_fbo[1].use()
+                self.ctx.viewport = (0, 0, bw, bh)
+                self.ctx.clear(0.0, 0.0, 0.0, 1.0)
+
+                self.pingpong_tex[0].use(location=0)
+                safe_set_uniform(self.blur_prog, "u_direction", (0.0, 1.0))
+                self.blur_vao.render(mode=moderngl.TRIANGLES, vertices=3)
+
+                src_tex = self.pingpong_tex[1]
 
         # Composite to screen + tone map/gamma
         self.ctx.screen.use()
@@ -228,11 +230,9 @@ class PostProcessingPass(RenderPass):
 
         safe_set_uniform(self.composite_prog, "u_bloom_intensity", inten)
         safe_set_uniform(self.composite_prog, "u_exposure", exp)
-        #safe_set_uniform(self.composite_prog, "u_gamma", gam)
 
         tone_mapping_id = TONE_MAPPING_IDS.get(tone_mapping, 0)
         safe_set_uniform(self.composite_prog, "u_tone_mapping_id", tone_mapping_id)
-        safe_set_uniform(self.composite_prog, "u_exposure", exposure)
         safe_set_uniform(self.composite_prog, "u_time", time_value)
 
         self.composite_vao.render(mode=moderngl.TRIANGLES, vertices=3)
