@@ -133,9 +133,9 @@ vec3 sun_luminance(float sunUpVis){
     return  sun_color * (SUN_INTENSITY * sunUpVis);
 }
 
-vec3 sun_radiance(vec3 V, vec3 S, float sunUpVis)
+vec3 sun_radiance(vec3 V, vec3 S, float sunUpVis, float disk_factor)
 {
-    float disk = sun_disk(V, S, max(SUN_RADIUS, 1e-6));
+    float disk = disk_factor * sun_disk(V, S, max(SUN_RADIUS, 1e-6));
     float halo = sun_halo(V, S);
     vec3 Lsun = sun_luminance(sunUpVis);
     return Lsun * (disk + 0.02 * halo);
@@ -275,7 +275,7 @@ vec3 procedural_environment(vec3 ro, vec3 rd)
     vec3 env = sky_ground_unblurred(V.y, sunUp, dusk);
 
     env += sun_scatter(V, S, sunUpVis);
-    env += sun_radiance(V, S, sunUpVis);
+    env += sun_radiance(V, S, sunUpVis, 10.0);
 
     // stars only here
     env += starfield(V, sunUp, skyW);
@@ -296,7 +296,7 @@ vec3 procedural_environment_ggx(vec3 ro, vec3 rd, float roughness)
     vec3 env0 = sky_ground_unblurred(V.y, sunUp, dusk);
     float skyW0 = sky_weight_unblurred(V.y);
     env0 += sun_scatter(V, S, sunUp * skyW0);
-    env0 += sun_radiance(V, S, sunUp * skyW0);
+    env0 += sun_radiance(V, S, sunUp * skyW0, 1.0);
 
     // blurred version
     float w = max(ggx_horizon_width(roughness), base_horizon_width());
