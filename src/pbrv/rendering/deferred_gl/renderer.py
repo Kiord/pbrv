@@ -7,7 +7,6 @@ from typing import Callable, Optional, Tuple
 import numpy as np
 from moderngl import Context
 
-
 from pbrv.core.scene import Scene, DirectionalLight
 
 from pbrv.rendering.api import Renderer, FrameState
@@ -135,7 +134,7 @@ class DeferredGLRenderer(Renderer):
 
         dir_light: Optional[DirectionalLight] = None
         if scene.dir_light is not None:
-            dir_light = self.shadow_pass.render(frame.model_matrix, scene.dir_light, frame.env_matrix)
+            dir_light = self.shadow_pass.render(frame.model_matrix, scene.dir_light, frame.light_matrix)
 
         self.geometry_pass.render(
             self.gbuffer,

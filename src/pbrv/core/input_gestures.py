@@ -127,20 +127,15 @@ class OrbitManipulator:
 
 
 class ArcballWorldManipulator:
-    def __init__(self, camera: Camera, *, ball_size: float, env: bool):
+    def __init__(self, camera: Camera, *, ball_size: float, direction: bool):
         self.camera = camera
-        self.env = env
+        self.direction = direction
         self.tb = Trackball(ball_size=ball_size)
         self.gesture = DragRotateGesture()
 
         self._base_quat = np.array([0, 0, 0, 1], dtype=np.float32)
         self.quat = np.array([0, 0, 0, 1], dtype=np.float32)
 
-        self.matrix = (
-            matrix33.create_identity(dtype=np.float32)
-            if self.env
-            else matrix44.create_identity(dtype=np.float32)
-        )
 
     def cancel(self) -> None:
         self.gesture.cancel()
@@ -157,12 +152,12 @@ class ArcballWorldManipulator:
         q_cam_conj = Q.conjugate(q_cam)
         q_world_delta = Q.cross(q_cam, Q.cross(self.tb.quat(), q_cam_conj))
 
-        if not self.env:
-            self.quat = Q.normalize(Q.cross(self._base_quat, q_world_delta))
-            self.matrix = matrix44.create_from_quaternion(self.quat)
-        else:
+        if self.direction:
             self.quat = Q.normalize(Q.cross(Q.conjugate(q_world_delta), self._base_quat))
-            self.matrix = matrix33.create_from_quaternion(self.quat)
+        else:
+            self.quat = Q.normalize(Q.cross(self._base_quat, q_world_delta))
+
+
 
     def on_release(self) -> None:
         self.gesture.on_release(self.tb)
@@ -172,6 +167,7 @@ class Mode(Enum):
     CAMERA = auto()
     MODEL = auto()
     ENV = auto()
+    LIGHT = auto()
 
 
 class CameraInputController:
@@ -199,25 +195,33 @@ class CameraInputController:
         self._active_mode = Mode.CAMERA
 
         self._orbit = OrbitManipulator(camera, orbit)
-        self._model = ArcballWorldManipulator(camera, ball_size=ball_size, env=False)
-        self._env = ArcballWorldManipulator(camera, ball_size=ball_size, env=True)
+        self._model = ArcballWorldManipulator(camera, ball_size=ball_size, direction=False)
+        self._env = ArcballWorldManipulator(camera, ball_size=ball_size, direction=True)
+        self._light = ArcballWorldManipulator(camera, ball_size=ball_size, direction=True)
 
         self.lod_factor = 0.0
         self._lod_factor_speed = 0.01
 
     @property
     def model_matrix(self) -> np.ndarray:
-        return self._model.matrix
+        return matrix44.create_from_quaternion(self._model.quat)
 
     @property
     def env_matrix(self) -> np.ndarray:
-        return self._env.matrix
+        return matrix33.create_from_quaternion(self._env.quat)
+    
+    @property
+    def light_matrix(self) -> np.ndarray:
+        quat = Q.cross(self._env.quat, self._light.quat)
+        return  matrix33.create_from_quaternion(quat)
 
     def _choose_mode(self) -> Mode:
         if self.modifiers.ctrl:
             return Mode.MODEL
         if self.modifiers.shift:
             return Mode.ENV
+        if self.modifiers.alt:
+            return Mode.LIGHT
         return Mode.CAMERA
 
     def _active_manipulator(self) -> Manipulator:
@@ -225,12 +229,15 @@ class CameraInputController:
             return self._model
         if self._active_mode == Mode.ENV:
             return self._env
+        if self._active_mode == Mode.LIGHT:
+            return self._light
         return self._orbit
 
     def _cancel_all_rotations(self) -> None:
         self._orbit.cancel()
         self._model.cancel()
         self._env.cancel()
+        self._light.cancel()
 
     def _is_object(self, x: int, y: int) -> bool:
         if self._pick_world_position is None:

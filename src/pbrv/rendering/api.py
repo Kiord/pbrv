@@ -21,6 +21,7 @@ class FrameState:
     camera:Camera
     model_matrix: np.ndarray
     env_matrix: np.ndarray
+    light_matrix: np.ndarray
     exposure: float
     tone_mapping: str
     env_lod_factor: Optional[float]

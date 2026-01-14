@@ -82,6 +82,7 @@ class Viewer(WindowConfig):
             camera=self.camera,
             model_matrix=self.input.model_matrix,
             env_matrix=self.input.env_matrix,
+            light_matrix=self.input.light_matrix,
             exposure=float(self.exposure),
             tone_mapping=str(self.tone_mapping),
             env_lod_factor=float(self.input.lod_factor) if self.input.lod_factor is not None else None,
