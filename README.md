@@ -6,7 +6,7 @@
   <img alt="Fallback image description" src="src/pbrv/resources/icons/logo_light.svg" width=512>
 </picture>
   <br>
-  A small <b>PBR</b> 3D <b>V</b>iewer in CLI powered by ModernGL
+  A small <u>PBR</u> 3D <u>V</u>iewer in CLI powered by ModernGL
 </p>
 
 ## Quick run
