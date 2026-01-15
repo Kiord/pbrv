@@ -27,7 +27,7 @@ class Viewer(WindowConfig):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.wnd.set_icon("icons/icon.jpg")
+        #self.wnd.set_icon("icons/icon.jpg")
 
         if self.wnd.name == "headless":
             print("ERROR: headless mode not supported. Exiting.")
