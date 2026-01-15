@@ -6,7 +6,7 @@
   <img alt="Fallback image description" src="src/pbrv/resources/icons/logo_light.svg" width=512>
 </picture>
   <br>
-  A small CLI PBR 3D viewer in Python
+  A small <b>PBR</b> 3D <b>V</b>iewer in CLI powered by ModernGL
 </p>
 
 ## Quick run
