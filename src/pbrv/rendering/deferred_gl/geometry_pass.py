@@ -135,6 +135,7 @@ class GeometryPass(RenderPass):
         safe_set_uniform(self.prog, "u_use_ao_map", self.use_ao_tex)
         safe_set_uniform(self.prog, "u_albedo", material.albedo)
         safe_set_uniform(self.prog, "u_roughness", material.roughness)
+        safe_set_uniform(self.prog, "u_metallic", material.metallic)
         safe_set_uniform(self.prog, "u_emissive", material.emissive)
         safe_set_uniform(self.prog, "u_specular", material.specular)
 
