@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 320" role="img">
+  <path d="M80 160
+           C160 70, 260 40, 400 40
+           C540 40, 640 70, 720 160
+           C640 250, 540 280, 400 280
+           C260 280, 160 250, 80 160 Z"
+        fill="none"
+        stroke="#1F2937"
+        stroke-width="18"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+  <g fill="#1F2937"
+     font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+     text-anchor="middle">
+    <text x="400" y="160" font-size="140" dominant-baseline="middle">pbrv</text>
+  </g>
+</svg>

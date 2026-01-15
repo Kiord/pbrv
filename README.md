@@ -1,8 +1,16 @@
-# pbrv
+
+<p align="center">
+<picture >
+  <source media="(prefers-color-scheme: dark)" srcset="src/pbrv/resources/icons/logo_dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="src/pbrv/resources/icons/logo_light.svg">
+  <img alt="Fallback image description" src="src/pbrv/resources/icons/logo_light.svg" width=512>
+</picture>
+</p>
+
+
 
 `pbrv` (PBR Viewer) is a small Python PBR viewer in CLI.
 
-[<img src="src/pbrv/resources/misc/snapshot.jpg">]()
 
 ## Quick run
 
