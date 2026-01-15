@@ -5,12 +5,9 @@
   <source media="(prefers-color-scheme: light)" srcset="src/pbrv/resources/icons/logo_light.svg">
   <img alt="Fallback image description" src="src/pbrv/resources/icons/logo_light.svg" width=512>
 </picture>
+  <br>
+  A small CLI PBR 3D viewer in Python
 </p>
-
-
-
-`pbrv` (PBR Viewer) is a small Python PBR viewer in CLI.
-
 
 ## Quick run
 
