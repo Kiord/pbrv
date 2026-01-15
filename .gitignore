@@ -54,5 +54,7 @@ Desktop.ini
 *.exr
 *.hdr
 
+*.xcf
+
 # misc
 tmp/
